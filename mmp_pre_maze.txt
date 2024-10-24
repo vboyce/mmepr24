@@ -1,0 +1,35 @@
+start; start; The next US president will be sworn into office in January 2025.
+she;1; After moving into the Oval Office, one of the first things that she will do is hold a staff briefing.
+she;2; During the inauguration speech, the president will emphasize her commitment to resolve outstanding issues quickly.
+she;3; Even before Inauguration Day, the Secret Service will protect the president and her family to ensure their safety.
+she;4; The entire world will be watching the president when she takes the Oath of Office.
+she;5; Unfortunately, there is no guarantee that the president will deliver on the promises that she made on the campaign trail.
+she;6; Although the president’s political power will not be absolute, she will be able to draft and veto bills.
+she;8; As commander in chief, she will be the only person with direct access to the nation's nuclear launch codes.
+she;9; The newly elected president will face many challenges, and one of her responsibilities is to defend the U.S. constitution.
+she;10; The president’s motorcade will be her primary mode of ground transportation while in office.
+she;11; Once the general election is over, the president will be followed by the press wherever she goes because the public wants to know what their new president is up to.
+she;12; Air Force One, the aircraft that will transport the president, is well-equipped to guarantee her safety on both domestic and international flights.
+he;1; After moving into the Oval Office, one of the first things that he will do is hold a staff briefing.
+he;2; During the inauguration speech, the president will emphasize his commitment to resolve outstanding issues quickly.
+he;3; Even before Inauguration Day, the Secret Service will protect the president and his family to ensure their safety.
+he;4; The entire world will be watching the president when he takes the Oath of Office.
+he;5; Unfortunately, there is no guarantee that the president will deliver on the promises that he made on the campaign trail.
+he;6; Although the president’s political power will not be absolute, he will be able to draft and veto bills.
+he;8; As commander in chief, he will be the only person with direct access to the nation's nuclear launch codes.
+he;9; The newly elected president will face many challenges, and one of his responsibilities is to defend the U.S. constitution.
+he;10; The president’s motorcade will be his primary mode of ground transportation while in office.
+he;11; Once the general election is over, the president will be followed by the press wherever he goes because the public wants to know what their new president is up to.
+he;12; Air Force One, the aircraft that will transport the president, is well-equipped to guarantee his safety on both domestic and international flights.
+they;1; After moving into the Oval Office, one of the first things that they will do is hold a staff briefing.
+they;2; During the inauguration speech, the president will emphasize their commitment to resolve outstanding issues quickly.
+they;3; Even before Inauguration Day, the Secret Service will protect the president and their family to ensure their safety.
+they;4; The entire world will be watching the president when they take the Oath of Office.
+they;5; Unfortunately, there is no guarantee that the president will deliver on the promises that they made on the campaign trail.
+they;6; Although the president’s political power will not be absolute, they will be able to draft and veto bills.
+they;8; As commander in chief, they will be the only person with direct access to the nation's nuclear launch codes.
+they;9; The newly elected president will face many challenges, and one of their responsibilities is to defend the U.S. constitution.
+they;10; The president’s motorcade will be their primary mode of ground transportation while in office.
+they;11; Once the general election is over, the president will be followed by the press wherever they go because the public wants to know what their new president is up to.
+they;12; Air Force One, the aircraft that will transport the president, is well-equipped to guarantee their safety on both domestic and international flights.
+
