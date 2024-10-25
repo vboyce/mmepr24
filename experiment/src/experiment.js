@@ -264,6 +264,12 @@ export async function run({
       timeline: [maze_trial, comprehension_q],
       timeline_variables: they_items,
     };
+    condition = "e";
+    timeline.push(spr_timeline);
+    timeline.push(recall);
+    timeline.push(cloze_timeline);
+    timeline.push(maze_timeline);
+    timeline.push(event_timeline);
     switch (condition) {
       case "cloze-event":
         timeline.push(cloze_timeline);
