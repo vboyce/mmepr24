@@ -32,36 +32,164 @@ export const POST_SURVEY_TEXT =
   "We plan to run more similar experiments in the future, so your " +
   "thoughtful responses here will help us make the experience smoother.";
 
-export const POST_SURVEY_QS = [
-  {
-    prompt:
-      "Were the instructions and task clear? " +
-      "Was there anything you found confusing?",
-    name: "understand",
-    rows: 4,
-  },
-  {
-    prompt:
-      "How was the task length? Would you have " +
-      "preferred fewer or more items / a shorter or longer task? " +
-      "(Assume time estimate and payment scale with length). ",
-    name: "length",
-    rows: 4,
-  },
-  {
-    prompt: "Were there any problems or errors with the experiment?",
-    name: "errors",
-    rows: 4,
-  },
-  {
-    prompt:
-      "Is there anything that would make the interface better?" +
-      " (ex. bigger text, or a different placement of text and buttons)",
-    name: "interface",
-    rows: 4,
-  },
-  { prompt: "Any other comments?", name: "other", rows: 4 },
-];
+export const POST_SURVEY_QS = {
+  showQuestionNumbers: false,
+  elements: [
+    {
+      type: "expression",
+      name: "intro",
+      title:
+        "Now please answer a couple of questions about your background.  This information will be stored in anonymous form and it will be impossible to link it to you.",
+      expression: "",
+    },
+    {
+      type: "radiogroup",
+      title:
+        "How often do you hear or read about the presidential race for the White House?",
+      name: "news",
+      choices: ["daily", "weekly", "monthly", "less than monthly", "never"],
+    },
+    {
+      type: "radiogroup",
+      title:
+        "Who would you PREFER to win the upcoming US presidential election?",
+      choices: [
+        "Kamala Harris",
+        "Donald Trump",
+        "I don't care",
+        "I'd rather not say",
+      ],
+      name: "prefer",
+    },
+    {
+      type: "text",
+      title: "How old are you?",
+      name: "age",
+    },
+    {
+      type: "radiogroup",
+      title: "Please select your gender.",
+      name: "gender",
+      choices: ["Female", "Male", "Non-binary", "Other", "Rather not say"],
+    },
+    {
+      type: "dropdown",
+      title: "Please select your home state:",
+      name: "state",
+      choices: [
+        "other",
+        "AL",
+        "AK",
+        "AS",
+        "AZ",
+        "AR",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "DC",
+        "FM",
+        "FL",
+        "GA",
+        "GU",
+        "HI",
+        "ID",
+        "IL",
+        "IN",
+        "IA",
+        "KS",
+        "KY",
+        "LA",
+        "ME",
+        "MH",
+        "MD",
+        "MA",
+        "MI",
+        "MN",
+        "MS",
+        "MO",
+        "MT",
+        "NE",
+        "NV",
+        "NH",
+        "NJ",
+        "NM",
+        "NY",
+        "NC",
+        "ND",
+        "MP",
+        "OH",
+        "OK",
+        "OR",
+        "PW",
+        "PA",
+        "PR",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VT",
+        "VI",
+        "VA",
+        "WA",
+        "WV",
+        "WI",
+        "WY",
+      ],
+    },
+    {
+      type: "radiogroup",
+      title: "Please select the highest level of education you have attained:",
+      choices: [
+        "Less than high school",
+        "High school graduate",
+        "Some college",
+        "2-year college degree",
+        "4-year college degree",
+        "Professional degree",
+        "Doctorate",
+      ],
+      name: "education",
+    },
+    {
+      type: "radiogroup",
+      title: "What is your political affiliation?",
+      name: "news",
+      choices: [
+        "Democrat",
+        "Republican",
+        "Independent",
+        "Other",
+        "None",
+        "Rather not say",
+      ],
+    },
+    {
+      type: "radiogroup",
+      title: "Are you a citizen of the United States?",
+      name: "citizen",
+      choices: ["Yes", "No"],
+      isRequired: true,
+    },
+    {
+      type: "radiogroup",
+      title: "Are you a native speaker of English?",
+      name: "english",
+      choices: ["Yes", "No"],
+      isRequired: true,
+    },
+    {
+      type: "radiogroup",
+      title: "Do you currently reside in the United States?",
+      name: "residence",
+      choices: ["Yes", "No"],
+      isRequired: true,
+    },
+  ],
+};
+
 export const DEBRIEF =
   "<h2>Many thanks for participating!</h2>" +
   "<h1>Press continue to be redirected to Prolific. </h1>";

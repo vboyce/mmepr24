@@ -14,10 +14,10 @@ import { initJsPsych } from "jspsych";
 
 import HtmlButtonResponsePlugin from "@jspsych/plugin-html-button-response";
 import CallFunctionPlugin from "@jspsych/plugin-call-function";
-import SurveyTextPlugin from "@jspsych/plugin-survey-text";
 import cloze from "@jspsych/plugin-cloze";
 import jsPsychSurveySlider from "@jspsych-contrib/plugin-survey-slider";
-
+import survey from "@jspsych/plugin-survey";
+import "@jspsych/plugin-survey/css/survey.css";
 import { proliferate } from "./proliferate.js";
 
 import {
@@ -77,12 +77,10 @@ export async function run({
   };
 
   let post_test_questions = {
-    type: SurveyTextPlugin,
-    preamble: POST_SURVEY_TEXT,
-    questions: POST_SURVEY_QS,
-    on_finish: function () {
-      jsPsych.setProgressBar(1);
-    },
+    type: survey,
+    preamble:
+      "Now please answer a couple of questions about your background.  This information will be stored in anonymous form and it will be impossible to link it to you.",
+    survey_json: POST_SURVEY_QS,
   };
 
   let end_experiment = {
@@ -207,8 +205,9 @@ export async function run({
       timeline: [maze_trial, comprehension_q],
       timeline_variables: they_items,
     };
-    timeline.push(timeline_test_maze_start);
-    timeline.push(timeline_test_maze_they);
+    timeline.push(post_test_questions);
+    //timeline.push(timeline_test_maze_start);
+    //timeline.push(timeline_test_maze_they);
     //timeline.push(maze_timeline);
     //timeline.push(recall);
     //timeline.push(cloze_timeline);

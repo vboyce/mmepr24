@@ -14,6 +14,8 @@
     "@jspsych/plugin-html-button-response": "^1.1.3",
     "@jspsych/plugin-html-keyboard-response": "^1.1.2",
     "@jspsych/plugin-preload": "^1.1.2",
+    "@jspsych/plugin-survey": "^2.0.0",
+    "@jspsych/plugin-survey-html-form": "^2.0.0",
     "@jspsych/plugin-survey-text": "^1.1.3",
     "bootstrap": "^5.3.3",
     "jquery": "^3.7.1",
