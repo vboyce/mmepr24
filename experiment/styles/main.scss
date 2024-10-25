@@ -1,4 +1,5 @@
 @import "~jspsych/css/jspsych.css";
+@import "@jspsych/plugin-survey/css/survey.css";
 @import "../node_modules/bootstrap/scss/bootstrap";
 
 .jspsych-display-element {
@@ -6,7 +7,16 @@
 }
 
 .jspsych-content {
-  max-width: 1500px;
+  max-width: 1000px;
+  width: 80vw;
+}
+
+#jspsych-html-button-response-btngroup {
+  margin: 10px;
+}
+
+#input {
+  width: "500px";
 }
 
 #legal {
@@ -18,6 +28,17 @@
   img {
     border: 3px solid #555;
     padding: 5px;
+  }
+}
+
+#spr {
+  max-width: 1500px;
+  .row {
+    position: relative;
+
+    canvas {
+      position: absolute;
+    }
   }
 }
 

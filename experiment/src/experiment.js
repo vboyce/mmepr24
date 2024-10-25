@@ -7,17 +7,17 @@
  */
 
 // You can import stylesheets (.scss or .css).
+
 import "../styles/main.scss";
 import MazePlugin from "./maze.js";
 
 import { initJsPsych } from "jspsych";
-
+import SprPlugin from "./spr.js";
 import HtmlButtonResponsePlugin from "@jspsych/plugin-html-button-response";
 import CallFunctionPlugin from "@jspsych/plugin-call-function";
-import cloze from "@jspsych/plugin-cloze";
+import cloze from "./cloze.js";
 import jsPsychSurveySlider from "@jspsych-contrib/plugin-survey-slider";
 import survey from "@jspsych/plugin-survey";
-import "@jspsych/plugin-survey/css/survey.css";
 import { proliferate } from "./proliferate.js";
 
 import {
@@ -35,7 +35,7 @@ import { MAZE_STIM } from "./maze_stim.js";
 import {
   CONSENT,
   POST_SURVEY_QS,
-  POST_SURVEY_TEXT,
+  SPR_INST,
   DEBRIEF,
   EVENT_INST,
   MAZE_INST,
@@ -50,7 +50,7 @@ const he_items = test_maze(MAZE_STIM, COMP_Q, "he");
 const they_items = test_maze(MAZE_STIM, COMP_Q, "they");
 const start_maze = MAZE_STIM.filter((i) => i.item == "start");
 
-const condition = get_condition();
+let condition = get_condition();
 /**
  * This function will be executed by jsPsych Builder and is expected to run the jsPsych experiment
  *
@@ -108,6 +108,13 @@ export async function run({
     response_ends_trial: true,
   };
 
+  let spr_instructions = {
+    type: HtmlButtonResponsePlugin,
+    stimulus: SPR_INST,
+    choices: ["Continue"],
+    response_ends_trial: true,
+  };
+
   let maze_trial = {
     type: MazePlugin,
     correct: jsPsych.timelineVariable("sentence"),
@@ -134,18 +141,39 @@ export async function run({
     data: {
       condition: condition,
       item: jsPsych.timelineVariable("item"),
-      partial: jsPsych.timelineVariable("partial"),
     },
   };
 
   let event_expectation = {
     type: jsPsychSurveySlider,
     preamble: EVENT_INST,
+    require_movement: true,
     questions: jsPsych.timelineVariable("questions"),
     data: {
       condition: condition,
-      prompt: jsPsych.timelineVariable("questions"),
     },
+  };
+
+  let spr_trial = {
+    type: SprPlugin,
+    prompt: "",
+    style: "word",
+    //css_classes: ["tangram-display"],
+    stimulus: jsPsych.timelineVariable("sentence"),
+    feedback: "",
+  };
+
+  let spr_practice = {
+    type: SprPlugin,
+    prompt: "",
+    style: "word",
+    stimulus: "Press space in order to reveal the next word.",
+    feedback: "",
+  };
+  let spr_practice_q = {
+    type: HtmlButtonResponsePlugin,
+    stimulus: "Did the sentence you just read contain the word 'reveal'?",
+    choices: ["Yes", "No"],
   };
 
   let recall = {
@@ -197,7 +225,7 @@ export async function run({
     //////////////// timeline /////////////////////////////////
     let timeline = [];
 
-    //timeline.push(consent);
+    timeline.push(consent);
     let maze_timeline = {
       timeline: [maze_instructions, maze_practice, maze_trial, comprehension_q],
       timeline_variables: maze_item,
@@ -209,6 +237,16 @@ export async function run({
     let event_timeline = {
       timeline: [event_expectation],
       timeline_variables: event_item,
+    };
+    let spr_timeline = {
+      timeline: [
+        spr_instructions,
+        spr_practice,
+        spr_practice_q,
+        spr_trial,
+        comprehension_q,
+      ],
+      timeline_variables: maze_item,
     };
     let timeline_test_maze_start = {
       timeline: [maze_instructions, maze_practice, maze_trial],
@@ -226,36 +264,34 @@ export async function run({
       timeline: [maze_trial, comprehension_q],
       timeline_variables: they_items,
     };
-    let content_timeline;
     switch (condition) {
       case "cloze-event":
-        content_timeline.push(cloze_timeline);
-        content_timeline.push(event_timeline);
+        timeline.push(cloze_timeline);
+        timeline.push(event_timeline);
         break;
       case "event-cloze":
-        content_timeline.push(event_timeline);
-        content_timeline.push(cloze_timeline);
+        timeline.push(event_timeline);
+        timeline.push(cloze_timeline);
         break;
       case "maze-event":
-        content_timeline.push(maze_timeline);
-        content_timeline.push(event_timeline);
+        timeline.push(maze_timeline);
+        timeline.push(event_timeline);
         break;
       case "event-maze":
-        content_timeline.push(event_timeline);
-        content_timeline.push(maze_timeline);
-        content_timeline.push(recall);
+        timeline.push(event_timeline);
+        timeline.push(maze_timeline);
+        timeline.push(recall);
         break;
       case "spr-event":
-        content_timeline.push(spr_timeline);
-        content_timeline.push(event_timeline);
+        timeline.push(spr_timeline);
+        timeline.push(event_timeline);
         break;
       case "event-spr":
-        content_timeline.push(event_timeline);
-        content_timeline.push(spr_timeline);
-        content_timeline.push(recall);
+        timeline.push(event_timeline);
+        timeline.push(spr_timeline);
+        timeline.push(recall);
         break;
     }
-    timeline.push(content_timeline);
     timeline.push(post_test_questions);
     timeline.push(end_experiment);
     timeline.push(send_data);

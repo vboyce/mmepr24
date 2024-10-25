@@ -33,9 +33,11 @@ export function get_condition() {
   // .4, .2, .27, .13
   let cuts = [0.4, 0.6, 0.87, 1];
   let conditions = ["cloze-event", "event-cloze", "maze-event", "event-maze"];
-  let value = math.random();
+  let value = Math.random();
+  console.log(value);
   for (let i = 0; i < cuts.length; i++) {
     if (value < cuts[i]) {
+      console.log(conditions[i]);
       return conditions[i];
     }
   }
@@ -82,14 +84,44 @@ export function build_cloze(items) {
 export function build_event() {
   let questions = [
     [
-      { prompt: "Kamala Harris", ticks: ["0%", "100%"] },
-      { prompt: "Donald Trump", ticks: ["0%", "100%"] },
-      { prompt: "Someone else", ticks: ["0%", "100%"] },
+      {
+        name: "harris",
+        prompt: "Kamala Harris",
+        slider_start: 0,
+        ticks: ["0%", "25%", "50%", "75%", "100%"],
+      },
+      {
+        name: "trump",
+        prompt: "Donald Trump",
+        slider_start: 0,
+        ticks: ["0%", "25%", "50%", "75%", "100%"],
+      },
+      {
+        name: "other",
+        prompt: "Someone else",
+        slider_start: 0,
+        ticks: ["0%", "25%", "50%", "75%", "100%"],
+      },
     ],
     [
-      { prompt: "Donald Trump", ticks: ["0%", "100%"] },
-      { prompt: "Kamala Harris", ticks: ["0%", "100%"] },
-      { prompt: "Someone else", ticks: ["0%", "100%"] },
+      {
+        name: "trump",
+        prompt: "Donald Trump",
+        slider_start: 0,
+        ticks: ["0%", "25%", "50%", "75%", "100%"],
+      },
+      {
+        name: "harris",
+        prompt: "Kamala Harris",
+        slider_start: 0,
+        ticks: ["0%", "25%", "50%", "75%", "100%"],
+      },
+      {
+        name: "other",
+        prompt: "Someone else",
+        slider_start: 0,
+        ticks: ["0%", "25%", "50%", "75%", "100%"],
+      },
     ],
   ];
   return [{ questions: pop_random(questions) }];

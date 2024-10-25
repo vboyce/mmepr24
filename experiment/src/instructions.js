@@ -26,6 +26,12 @@ export const MAZE_INST =
   " for the word on the left or pressing 'i' (right-hand) for the word on the right.</p>" +
   "<p>Select the best word as quickly as you can, but without making too many errors.</p>";
 
+export const SPR_INST =
+  "<p> On the next page you will read sentences word by word. " +
+  "Press the SPACE key to reveal the first word and then SPACE again" +
+  " for each subsequent word. " +
+  " Make sure to read the sentences carefully since you will be " +
+  "asked questions about them afterwards.</p>";
 export const POST_SURVEY_TEXT =
   "<h1>End of the experiment.</h1>" +
   "Before you go, we have a couple questions about your experience.</br>" +
