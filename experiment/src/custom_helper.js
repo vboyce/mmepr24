@@ -23,6 +23,24 @@ function pop_random(items) {
   let id = Math.floor(Math.random() * items.length);
   return items[id];
 }
+
+export function get_condition() {
+  // order of conditions: cloze-event, event-cloze, maze-event, event-maze
+  // add SPR if we do that
+  // ratio for now -- again negotiable
+  // 2/3 task first, 1/3 task second
+  // 6:4 cloze:maze
+  // .4, .2, .27, .13
+  let cuts = [0.4, 0.6, 0.87, 1];
+  let conditions = ["cloze-event", "event-cloze", "maze-event", "event-maze"];
+  let value = math.random();
+  for (let i = 0; i < cuts.length; i++) {
+    if (value < cuts[i]) {
+      return conditions[i];
+    }
+  }
+}
+
 export function build_maze(items, qs) {
   const types = [
     ["she", "she"],

@@ -25,6 +25,7 @@ import {
   build_cloze,
   build_event,
   test_maze,
+  get_condition,
 } from "./custom_helper.js";
 
 import { CLOZE_STIM } from "./cloze_stim.js";
@@ -43,10 +44,13 @@ import {
 const maze_item = build_maze(MAZE_STIM, COMP_Q);
 const cloze_item = build_cloze(CLOZE_STIM);
 const event_item = build_event();
+
 const she_items = test_maze(MAZE_STIM, COMP_Q, "she");
 const he_items = test_maze(MAZE_STIM, COMP_Q, "he");
 const they_items = test_maze(MAZE_STIM, COMP_Q, "they");
 const start_maze = MAZE_STIM.filter((i) => i.item == "start");
+
+const condition = get_condition();
 /**
  * This function will be executed by jsPsych Builder and is expected to run the jsPsych experiment
  *
@@ -111,6 +115,7 @@ export async function run({
     css_classes: ["maze-display"],
     prompt: "",
     data: {
+      condition: condition,
       type: jsPsych.timelineVariable("type"),
       item: jsPsych.timelineVariable("item"),
       sentence: jsPsych.timelineVariable("sentence"),
@@ -126,12 +131,21 @@ export async function run({
     mistake_fn: function () {
       alert("Please complete the sentence.");
     },
+    data: {
+      condition: condition,
+      item: jsPsych.timelineVariable("item"),
+      partial: jsPsych.timelineVariable("partial"),
+    },
   };
 
   let event_expectation = {
     type: jsPsychSurveySlider,
     preamble: EVENT_INST,
     questions: jsPsych.timelineVariable("questions"),
+    data: {
+      condition: condition,
+      prompt: jsPsych.timelineVariable("questions"),
+    },
   };
 
   let recall = {
@@ -154,6 +168,9 @@ export async function run({
             "I don't remember",
           ];
     },
+    data: {
+      condition: condition,
+    },
   };
 
   let maze_practice = {
@@ -170,6 +187,10 @@ export async function run({
     type: HtmlButtonResponsePlugin,
     stimulus: jsPsych.timelineVariable("question"),
     choices: ["Yes", "No"],
+    data: {
+      condition: condition,
+      item: jsPsych.timelineVariable("qitem"),
+    },
   };
 
   function getTimeline() {
@@ -205,14 +226,37 @@ export async function run({
       timeline: [maze_trial, comprehension_q],
       timeline_variables: they_items,
     };
+    let content_timeline;
+    switch (condition) {
+      case "cloze-event":
+        content_timeline.push(cloze_timeline);
+        content_timeline.push(event_timeline);
+        break;
+      case "event-cloze":
+        content_timeline.push(event_timeline);
+        content_timeline.push(cloze_timeline);
+        break;
+      case "maze-event":
+        content_timeline.push(maze_timeline);
+        content_timeline.push(event_timeline);
+        break;
+      case "event-maze":
+        content_timeline.push(event_timeline);
+        content_timeline.push(maze_timeline);
+        content_timeline.push(recall);
+        break;
+      case "spr-event":
+        content_timeline.push(spr_timeline);
+        content_timeline.push(event_timeline);
+        break;
+      case "event-spr":
+        content_timeline.push(event_timeline);
+        content_timeline.push(spr_timeline);
+        content_timeline.push(recall);
+        break;
+    }
+    timeline.push(content_timeline);
     timeline.push(post_test_questions);
-    //timeline.push(timeline_test_maze_start);
-    //timeline.push(timeline_test_maze_they);
-    //timeline.push(maze_timeline);
-    //timeline.push(recall);
-    //timeline.push(cloze_timeline);
-    //timeline.push(event_timeline);
-    //timeline.push(post_test_questions);
     timeline.push(end_experiment);
     timeline.push(send_data);
     return timeline;
