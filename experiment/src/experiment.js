@@ -20,7 +20,12 @@ import jsPsychSurveySlider from "@jspsych-contrib/plugin-survey-slider";
 
 import { proliferate } from "./proliferate.js";
 
-import { build_maze, build_cloze, build_event } from "./custom_helper.js";
+import {
+  build_maze,
+  build_cloze,
+  build_event,
+  test_maze,
+} from "./custom_helper.js";
 
 import { CLOZE_STIM } from "./cloze_stim.js";
 import { COMP_Q } from "./comp_q.js";
@@ -38,6 +43,10 @@ import {
 const maze_item = build_maze(MAZE_STIM, COMP_Q);
 const cloze_item = build_cloze(CLOZE_STIM);
 const event_item = build_event();
+const she_items = test_maze(MAZE_STIM, COMP_Q, "she");
+const he_items = test_maze(MAZE_STIM, COMP_Q, "he");
+const they_items = test_maze(MAZE_STIM, COMP_Q, "they");
+const start_maze = MAZE_STIM.filter((i) => i.item == "start");
 /**
  * This function will be executed by jsPsych Builder and is expected to run the jsPsych experiment
  *
@@ -182,10 +191,28 @@ export async function run({
       timeline: [event_expectation],
       timeline_variables: event_item,
     };
-    timeline.push(maze_timeline);
-    timeline.push(recall);
-    timeline.push(cloze_timeline);
-    timeline.push(event_timeline);
+    let timeline_test_maze_start = {
+      timeline: [maze_instructions, maze_practice, maze_trial],
+      timeline_variables: start_maze,
+    };
+    let timeline_test_maze_she = {
+      timeline: [maze_trial, comprehension_q],
+      timeline_variables: she_items,
+    };
+    let timeline_test_maze_he = {
+      timeline: [maze_trial, comprehension_q],
+      timeline_variables: he_items,
+    };
+    let timeline_test_maze_they = {
+      timeline: [maze_trial, comprehension_q],
+      timeline_variables: they_items,
+    };
+    timeline.push(timeline_test_maze_start);
+    timeline.push(timeline_test_maze_they);
+    //timeline.push(maze_timeline);
+    //timeline.push(recall);
+    //timeline.push(cloze_timeline);
+    //timeline.push(event_timeline);
     //timeline.push(post_test_questions);
     timeline.push(end_experiment);
     timeline.push(send_data);

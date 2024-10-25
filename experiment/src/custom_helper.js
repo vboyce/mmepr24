@@ -76,3 +76,20 @@ export function build_event() {
   ];
   return [{ questions: pop_random(questions) }];
 }
+
+export function test_maze(items, qs, type) {
+  let subset = items.filter((i) => i.type == type);
+  const output = subset.map((i) => {
+    let question = qs.find((j) => j.item == i.item);
+    return {
+      type: i.type,
+      item: i.item,
+      sentence: i.sentence,
+      distractor: i.distractor,
+      qitem: i.item,
+      question: question.q,
+      answer: question.a,
+    };
+  });
+  return output;
+}
