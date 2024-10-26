@@ -154,6 +154,7 @@ export const POST_SURVEY_QS = {
         "Some college",
         "2-year college degree",
         "4-year college degree",
+        "Master's degree",
         "Professional degree",
         "Doctorate",
       ],
