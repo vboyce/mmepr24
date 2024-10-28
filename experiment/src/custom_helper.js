@@ -84,7 +84,7 @@ export function build_maze(items, qs) {
 
 export function build_cloze(items) {
   let item = pop_random(items);
-  item.partial = CLOZE_INST + item.partial + "%%";
+  item.partial = CLOZE_INST + "<br><p>" + item.partial + "</p>%%<br>";
   return [item];
 }
 

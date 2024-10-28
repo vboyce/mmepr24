@@ -8,7 +8,7 @@ export const CONSENT =
   "least 18 years of age and agree to complete this study voluntarily.</div></br>";
 
 export const EVENT_INST =
-  "<h1>Who do you think will be the US president in February 2025?</h1>" +
+  "<h2>Who do you think will be <br> the US president in February 2025?</h2>" +
   "<p>Use the sliders below to indicate each candidate's chance of winning the election.</p>";
 
 export const CLOZE_INST =
@@ -17,13 +17,15 @@ export const CLOZE_INST =
   "the complete rest of the sentence.</h4>";
 
 export const MAZE_INST =
-  "<p>Now please place your left index finger on the 'e' key and your " +
-  "right index finger on the 'i' key.</p>" +
+  "<h3>Please read these instructions carefully!</h3> </br>" +
+  "<p>For the next part, please place your <b>left index finger on the 'e' key</b> and" +
+  " your <b>right index finger on the 'i' key</b>.</p>" +
   "<p> You will read sentences word by word. " +
-  "On each screen you will see two options: one will be the next word in the sentence, " +
-  "and one will not. Select the word that continues the sentence by pressing 'e' (left-hand)" +
-  " for the word on the left or pressing 'i' (right-hand) for the word on the right.</p>" +
-  "<p>Select the best word as quickly as you can, but without making too many errors.</p>";
+  "However, you will have to guess which word comes next. " +
+  "On each screen you will see two options: one will be the next word in the sentence, and one will not. </p>" +
+  "<p><b>Select the word that continues the sentence by pressing 'e' (left-hand) for the word on the left or <br>" +
+  "pressing 'i' (right-hand) for the word on the right.</b></p>" +
+  "<p>Select the best word as quickly as you can, but without making too many errors. </p>";
 
 export const SPR_INST =
   "<p> On the next page you will read sentences word by word. " +
@@ -32,7 +34,7 @@ export const SPR_INST =
   " Make sure to read the sentences carefully since you will be " +
   "asked questions about them afterwards.</p>";
 export const POST_SURVEY_TEXT =
-  "<h1>End of the experiment.</h1>" +
+  "<h2>End of the experiment.</h2>" +
   "Before you go, we have a couple questions about your experience.</br>" +
   "We plan to run more similar experiments in the future, so your " +
   "thoughtful responses here will help us make the experience smoother.";

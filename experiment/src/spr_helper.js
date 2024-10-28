@@ -148,7 +148,7 @@ export function gatherWordInfo(stim, trial_pars, ctx, maxwidth) {
   let y = delta_y * 1.2;
   let word = 0;
   const BASE_Y = delta_y * 1.2; // The height on which lines begin.
-  const BASE_X = 100;
+  const BASE_X = 0;
 
   let liney = BASE_Y;
   let runningx = BASE_X;
@@ -171,7 +171,7 @@ export function gatherWordInfo(stim, trial_pars, ctx, maxwidth) {
       ctx,
       trial_pars.font_size + "px " + trial_pars.font_family
     );
-    if (runningx + current_word.width() > 0.9 * maxwidth) {
+    if (runningx + current_word.width() > maxwidth) {
       liney = liney + y;
       runningx = BASE_X;
       pos = new Pos(runningx, liney);

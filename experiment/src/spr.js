@@ -100,7 +100,7 @@ const info = {
     width: {
       type: ParameterType.INT,
       pretty_name: "width",
-      default: 800,
+      default: 600,
       description:
         "The width of the canvas in which the spr moving window is presented.",
     },
@@ -194,7 +194,7 @@ function setupVariables(display_element, trial_pars) {
   var new_html =
     '<div class="container">' + '<canvas id="text-canvas"></canvas>' + "</div>";
   display_element.innerHTML = new_html;
-  createCanvas(document.getElementById("text-canvas"), 400);
+  createCanvas(document.getElementById("text-canvas"), 600);
   ctx.font = font;
   let stimulus = trial_pars.stimulus;
   console.log(document.getElementById(SPR_CANVAS).width);

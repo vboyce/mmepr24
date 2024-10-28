@@ -13,6 +13,7 @@ import MazePlugin from "./maze.js";
 
 import { initJsPsych } from "jspsych";
 import SprPlugin from "./spr.js";
+import browserCheck from "@jspsych/plugin-browser-check";
 import HtmlButtonResponsePlugin from "@jspsych/plugin-html-button-response";
 import CallFunctionPlugin from "@jspsych/plugin-call-function";
 import cloze from "./cloze.js";
@@ -79,6 +80,19 @@ export async function run({
     },
   });
 
+  let browserchecker = {
+    type: browserCheck,
+    features: ["width", "height", "mobile"],
+    minumum_width: 800,
+    minimum_height: 700,
+
+    inclusion_function: (data) => {
+      return data.mobile === false;
+    },
+    exclusion_message: (data) => {
+      return `<p>You must use a laptop/desktop computer to participate in this experiment.</p>`;
+    },
+  };
   let consent = {
     type: HtmlButtonResponsePlugin,
     stimulus: CONSENT,
@@ -162,7 +176,6 @@ export async function run({
     type: SprPlugin,
     prompt: "",
     style: "word",
-    //css_classes: ["tangram-display"],
     stimulus: jsPsych.timelineVariable("sentence"),
     feedback: "",
   };
@@ -228,7 +241,7 @@ export async function run({
   function getTimeline() {
     //////////////// timeline /////////////////////////////////
     let timeline = [];
-
+    timeline.push(browserchecker);
     timeline.push(consent);
     let maze_timeline = {
       timeline: [maze_instructions, maze_practice, maze_trial, comprehension_q],

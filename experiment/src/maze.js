@@ -115,14 +115,14 @@ const info = {
     font_size: {
       type: ParameterType.INT,
       pretty_name: "The size of the font.",
-      default: 60,
+      default: 30,
       description:
         "The final font will be computed from the family, and font size",
     },
     width: {
       type: ParameterType.INT,
       pretty_name: "width",
-      default: 1000,
+      default: 600,
       description:
         "The width of the canvas in which the spr moving window is presented.",
     },
