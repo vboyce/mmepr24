@@ -129,30 +129,6 @@ export const MAZE_STIM = [
   },
   {
     type: "she",
-    item: "6",
-    sentence:
-      "Although the president’s political power will not be absolute, she will be able to draft and veto bills.",
-    distractor:
-      "x-x-x door collaborate depending sorry wild lady lots syndrome, shop sick nice card cool saint walk zinc skull.",
-  },
-  {
-    type: "he",
-    item: "6",
-    sentence:
-      "Although the president’s political power will not be absolute, he will be able to draft and veto bills.",
-    distractor:
-      "x-x-x door collaborate depending sorry wild lady lots syndrome, shop sick nice card cool saint walk zinc skull.",
-  },
-  {
-    type: "they",
-    item: "6",
-    sentence:
-      "Although the president’s political power will not be absolute, they will be able to draft and veto bills.",
-    distractor:
-      "x-x-x door collaborate depending sorry wild lady lots syndrome, shop sick nice card cool saint walk zinc skull.",
-  },
-  {
-    type: "she",
     item: "8",
     sentence:
       "As commander in chief, she will be the only person with direct access to the nation's nuclear launch codes.",

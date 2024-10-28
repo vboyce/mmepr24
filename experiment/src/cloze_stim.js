@@ -25,11 +25,6 @@ export const CLOZE_STIM = [
       "The next US president will be sworn into office in January 2025. Unfortunately, there is no guarantee that the president will deliver on the promises that ",
   },
   {
-    item: "6",
-    partial:
-      "The next US president will be sworn into office in January 2025. Although the president’s political power will not be absolute, ",
-  },
-  {
     item: "8",
     partial:
       "The next US president will be sworn into office in January 2025. As commander in chief, ",

@@ -1,12 +1,11 @@
 export const CONSENT =
-  ' <center><img width="300px" src="assets/stanford.png" /></center>' +
-  '<div id="legal"></br>By answering the following questions, you are participating in a study being performed ' +
-  "by cognitive scientists in the Stanford Department of Psychology. If you have questions about this " +
-  'research, please contact us at  <a href="mailto://languagecoglab@gmail.com."> languagecoglab@gmail.com</a>.' +
-  "You must be at least 18 years old to participate. Your participation in this research is voluntary. " +
-  "You may decline to answer any or all of the following questions. You may decline further participation, " +
-  "at any time, without adverse consequences. Your anonymity is assured; the researchers who have requested " +
-  "your participation will not receive any personal information about you. </div></br>";
+  ' <center><img width="300px" src="assets/mit.png" /></center>' +
+  '<div id="legal"></br>This study is part of a MIT scientific research project. Your decision to complete this study is ' +
+  "voluntary. There is no way for us to identify you. The only information we will have, in addition " +
+  "to your responses, is the demographic information you provided to Prolific and the time at " +
+  "which you completed the survey. The results of the research may be presented at scientific " +
+  "meetings or published in scientific journals. Clicking on the link below indicates that you are at " +
+  "least 18 years of age and agree to complete this study voluntarily.</div></br>";
 
 export const EVENT_INST =
   "<h1>Who do you think will be the US president in February 2025?</h1>" +
@@ -38,7 +37,7 @@ export const POST_SURVEY_TEXT =
   "We plan to run more similar experiments in the future, so your " +
   "thoughtful responses here will help us make the experience smoother.";
 
-export const POST_SURVEY_QS = {
+export const POST_SURVEY_QS_1 = {
   showQuestionNumbers: false,
   elements: [
     {
@@ -62,6 +61,164 @@ export const POST_SURVEY_QS = {
       choices: [
         "Kamala Harris",
         "Donald Trump",
+        "I don't care",
+        "I'd rather not say",
+      ],
+      name: "prefer",
+    },
+    {
+      type: "text",
+      title: "How old are you?",
+      name: "age",
+    },
+    {
+      type: "radiogroup",
+      title: "Please select your gender.",
+      name: "gender",
+      choices: ["Female", "Male", "Non-binary", "Other", "Rather not say"],
+    },
+    {
+      type: "dropdown",
+      title: "Please select your home state:",
+      name: "state",
+      choices: [
+        "other",
+        "AL",
+        "AK",
+        "AS",
+        "AZ",
+        "AR",
+        "CA",
+        "CO",
+        "CT",
+        "DE",
+        "DC",
+        "FM",
+        "FL",
+        "GA",
+        "GU",
+        "HI",
+        "ID",
+        "IL",
+        "IN",
+        "IA",
+        "KS",
+        "KY",
+        "LA",
+        "ME",
+        "MH",
+        "MD",
+        "MA",
+        "MI",
+        "MN",
+        "MS",
+        "MO",
+        "MT",
+        "NE",
+        "NV",
+        "NH",
+        "NJ",
+        "NM",
+        "NY",
+        "NC",
+        "ND",
+        "MP",
+        "OH",
+        "OK",
+        "OR",
+        "PW",
+        "PA",
+        "PR",
+        "RI",
+        "SC",
+        "SD",
+        "TN",
+        "TX",
+        "UT",
+        "VT",
+        "VI",
+        "VA",
+        "WA",
+        "WV",
+        "WI",
+        "WY",
+      ],
+    },
+    {
+      type: "radiogroup",
+      title: "Please select the highest level of education you have attained:",
+      choices: [
+        "Less than high school",
+        "High school graduate",
+        "Some college",
+        "2-year college degree",
+        "4-year college degree",
+        "Professional degree",
+        "Doctorate",
+      ],
+      name: "education",
+    },
+    {
+      type: "radiogroup",
+      title: "What is your political affiliation?",
+      name: "news",
+      choices: [
+        "Democrat",
+        "Republican",
+        "Independent",
+        "Other",
+        "None",
+        "Rather not say",
+      ],
+    },
+    {
+      type: "radiogroup",
+      title: "Are you a citizen of the United States?",
+      name: "citizen",
+      choices: ["Yes", "No"],
+      isRequired: true,
+    },
+    {
+      type: "radiogroup",
+      title: "Are you a native speaker of English?",
+      name: "english",
+      choices: ["Yes", "No"],
+      isRequired: true,
+    },
+    {
+      type: "radiogroup",
+      title: "Do you currently reside in the United States?",
+      name: "residence",
+      choices: ["Yes", "No"],
+      isRequired: true,
+    },
+  ],
+};
+
+export const POST_SURVEY_QS_2 = {
+  showQuestionNumbers: false,
+  elements: [
+    {
+      type: "expression",
+      name: "intro",
+      title:
+        "Now please answer a couple of questions about your background.  This information will be stored in anonymous form and it will be impossible to link it to you.",
+      expression: "",
+    },
+    {
+      type: "radiogroup",
+      title:
+        "How often do you hear or read about the presidential race for the White House?",
+      name: "news",
+      choices: ["daily", "weekly", "monthly", "less than monthly", "never"],
+    },
+    {
+      type: "radiogroup",
+      title:
+        "Who would you PREFER to win the upcoming US presidential election?",
+      choices: [
+        "Donald Trump",
+        "Kamala Harris",
         "I don't care",
         "I'd rather not say",
       ],
