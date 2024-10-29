@@ -92,23 +92,27 @@ export async function run({
     exclusion_message: (data) => {
       return `<p>You must use a laptop/desktop computer to participate in this experiment.</p>`;
     },
+    data: { extras: {} },
   };
   let consent = {
     type: HtmlButtonResponsePlugin,
     stimulus: CONSENT,
     choices: ["Continue"],
     response_ends_trial: true,
+    data: { extras: {} },
   };
 
   let post_test_questions = {
     type: survey,
     survey_json: survey_questions,
+    data: { extras: {} },
   };
 
   let end_experiment = {
     type: HtmlButtonResponsePlugin,
     stimulus: DEBRIEF,
     choices: ["Continue"],
+    data: { extras: {} },
   };
 
   let send_data = {
@@ -124,6 +128,7 @@ export async function run({
     stimulus: MAZE_INST,
     choices: ["Continue"],
     response_ends_trial: true,
+    data: { extras: {} },
   };
 
   let spr_instructions = {
@@ -131,6 +136,7 @@ export async function run({
     stimulus: SPR_INST,
     choices: ["Continue"],
     response_ends_trial: true,
+    data: { extras: {} },
   };
 
   let maze_trial = {
@@ -140,11 +146,13 @@ export async function run({
     css_classes: ["maze-display"],
     prompt: "",
     data: {
-      condition: condition,
-      type: jsPsych.timelineVariable("type"),
-      item: jsPsych.timelineVariable("item"),
-      sentence: jsPsych.timelineVariable("sentence"),
-      distractor: jsPsych.timelineVariable("distractor"),
+      extras: {
+        condition: condition,
+        type: jsPsych.timelineVariable("type"),
+        item: jsPsych.timelineVariable("item"),
+        sentence: jsPsych.timelineVariable("sentence"),
+        distractor: jsPsych.timelineVariable("distractor"),
+      },
     },
   };
 
@@ -157,8 +165,10 @@ export async function run({
       alert("Please complete the sentence.");
     },
     data: {
-      condition: condition,
-      item: jsPsych.timelineVariable("item"),
+      extras: {
+        condition: condition,
+        item: jsPsych.timelineVariable("item"),
+      },
     },
   };
 
@@ -168,7 +178,7 @@ export async function run({
     require_movement: [true, true, false],
     questions: jsPsych.timelineVariable("questions"),
     data: {
-      condition: condition,
+      extras: { condition: condition },
     },
   };
 
@@ -178,6 +188,15 @@ export async function run({
     style: "word",
     stimulus: jsPsych.timelineVariable("sentence"),
     feedback: "",
+    data: {
+      extras: {
+        condition: condition,
+        type: jsPsych.timelineVariable("type"),
+        item: jsPsych.timelineVariable("item"),
+        sentence: jsPsych.timelineVariable("sentence"),
+        distractor: jsPsych.timelineVariable("distractor"),
+      },
+    },
   };
 
   let spr_practice = {
@@ -186,11 +205,13 @@ export async function run({
     style: "word",
     stimulus: "Press space in order to reveal the next word.",
     feedback: "",
+    data: { extras: { condition: condition } },
   };
   let spr_practice_q = {
     type: HtmlButtonResponsePlugin,
     stimulus: "Did the sentence you just read contain the word 'reveal'?",
     choices: ["Yes", "No"],
+    data: { extras: {} },
   };
 
   let recall = {
@@ -214,7 +235,9 @@ export async function run({
           ];
     },
     data: {
-      condition: condition,
+      extras: {
+        condition: condition,
+      },
     },
   };
 
@@ -226,6 +249,7 @@ export async function run({
     distractor:
       "x-x-x treating okay guys suggests. x-x-x pre percent partners cops. x-x-x lord caused sing anti weird.",
     css_classes: ["maze-display"],
+    data: { extras: {} },
   };
 
   let comprehension_q = {
@@ -233,8 +257,10 @@ export async function run({
     stimulus: jsPsych.timelineVariable("question"),
     choices: ["Yes", "No"],
     data: {
-      condition: condition,
-      item: jsPsych.timelineVariable("qitem"),
+      extras: {
+        condition: condition,
+        item: jsPsych.timelineVariable("qitem"),
+      },
     },
   };
 

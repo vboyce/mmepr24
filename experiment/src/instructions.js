@@ -13,7 +13,7 @@ export const EVENT_INST =
 
 export const CLOZE_INST =
   "<h4>Below is a fragment of a sentence.  " +
-  "Please guess how the sentence continued and use the text field to enter " +
+  "Please guess how the sentence continues and use the text field to enter " +
   "the complete rest of the sentence.</h4>";
 
 export const MAZE_INST =
@@ -54,7 +54,7 @@ export const POST_SURVEY_QS_1 = {
       title:
         "How often do you hear or read about the presidential race for the White House?",
       name: "news",
-      choices: ["daily", "weekly", "monthly", "less than monthly", "never"],
+      choices: ["Daily", "Weekly", "Monthly", "Less than monthly", "Never"],
     },
     {
       type: "radiogroup",
@@ -212,7 +212,7 @@ export const POST_SURVEY_QS_2 = {
       title:
         "How often do you hear or read about the presidential race for the White House?",
       name: "news",
-      choices: ["daily", "weekly", "monthly", "less than monthly", "never"],
+      choices: ["Daily", "Weekly", "Monthly", "Less than monthly", "Never"],
     },
     {
       type: "radiogroup",
