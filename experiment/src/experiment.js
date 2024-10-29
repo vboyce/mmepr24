@@ -58,6 +58,11 @@ const survey_questions =
   Math.random() > 0.5 ? POST_SURVEY_QS_1 : POST_SURVEY_QS_2;
 
 let condition = get_condition();
+
+let recall_order =
+  Math.random() > 0.5
+    ? ["Kamala Harris", "Donald Trump", "Writer is unsure", "I don't remember"]
+    : ["Donald Trump", "Kamala Harris", "Writer is unsure", "I don't remember"];
 /**
  * This function will be executed by jsPsych Builder and is expected to run the jsPsych experiment
  *
@@ -99,20 +104,32 @@ export async function run({
     stimulus: CONSENT,
     choices: ["Continue"],
     response_ends_trial: true,
-    data: { extras: {} },
   };
 
   let post_test_questions = {
     type: survey,
     survey_json: survey_questions,
-    data: { extras: {} },
+    data: {
+      condition: condition,
+      item: "",
+      question_order: "",
+      cumrt: "",
+      correct: "",
+      words: "",
+      distractors: "",
+      order: "",
+      recall_order: "",
+      questions: "",
+      type: "",
+      sentence: "",
+      distractor: "",
+    },
   };
 
   let end_experiment = {
     type: HtmlButtonResponsePlugin,
     stimulus: DEBRIEF,
     choices: ["Continue"],
-    data: { extras: {} },
   };
 
   let send_data = {
@@ -128,7 +145,6 @@ export async function run({
     stimulus: MAZE_INST,
     choices: ["Continue"],
     response_ends_trial: true,
-    data: { extras: {} },
   };
 
   let spr_instructions = {
@@ -146,13 +162,15 @@ export async function run({
     css_classes: ["maze-display"],
     prompt: "",
     data: {
-      extras: {
-        condition: condition,
-        type: jsPsych.timelineVariable("type"),
-        item: jsPsych.timelineVariable("item"),
-        sentence: jsPsych.timelineVariable("sentence"),
-        distractor: jsPsych.timelineVariable("distractor"),
-      },
+      condition: condition,
+      item: jsPsych.timelineVariable("type"),
+      question_order: "",
+      order: "",
+      recall_order: "",
+      questions: "",
+      type: jsPsych.timelineVariable("type"),
+      sentence: jsPsych.timelineVariable("sentence"),
+      distractor: jsPsych.timelineVariable("distractor"),
     },
   };
 
@@ -165,10 +183,19 @@ export async function run({
       alert("Please complete the sentence.");
     },
     data: {
-      extras: {
-        condition: condition,
-        item: jsPsych.timelineVariable("item"),
-      },
+      condition: condition,
+      item: jsPsych.timelineVariable("item"),
+      question_order: "",
+      cumrt: "",
+      correct: "",
+      words: "",
+      distractors: "",
+      order: "",
+      recall_order: "",
+      questions: "",
+      type: "",
+      sentence: "",
+      distractor: "",
     },
   };
 
@@ -178,7 +205,18 @@ export async function run({
     require_movement: [true, true, false],
     questions: jsPsych.timelineVariable("questions"),
     data: {
-      extras: { condition: condition },
+      condition: condition,
+      item: "",
+      cumrt: "",
+      correct: "",
+      words: "",
+      distractors: "",
+      order: "",
+      recall_order: "",
+      questions: jsPsych.timelineVariable("questions"),
+      type: "",
+      sentence: "",
+      distractor: "",
     },
   };
 
@@ -189,13 +227,19 @@ export async function run({
     stimulus: jsPsych.timelineVariable("sentence"),
     feedback: "",
     data: {
-      extras: {
-        condition: condition,
-        type: jsPsych.timelineVariable("type"),
-        item: jsPsych.timelineVariable("item"),
-        sentence: jsPsych.timelineVariable("sentence"),
-        distractor: jsPsych.timelineVariable("distractor"),
-      },
+      condition: condition,
+      item: jsPsych.timelineVariable("item"),
+      question_order: "",
+      cumrt: "",
+      correct: "",
+      words: "",
+      distractors: "",
+      order: "",
+      recall_order: "",
+      questions: "",
+      type: jsPsych.timelineVariable("type"),
+      sentence: jsPsych.timelineVariable("sentence"),
+      distractor: "",
     },
   };
 
@@ -219,25 +263,21 @@ export async function run({
     stimulus:
       "<p>Think about the writer of the sentences you read on the previous page. " +
       "Who does the writer believe will be the US president in February 2025?</p></br>",
-    choices: function () {
-      return Math.random() > 0.5
-        ? [
-            "Kamala Harris",
-            "Donald Trump",
-            "Writer is unsure",
-            "I don't remember",
-          ]
-        : [
-            "Donald Trump",
-            "Kamala Harris",
-            "Writer is unsure",
-            "I don't remember",
-          ];
-    },
+    choices: recall_order,
     data: {
-      extras: {
-        condition: condition,
-      },
+      condition: condition,
+      item: "",
+      question_order: "",
+      cumrt: "",
+      correct: "",
+      words: "",
+      distractors: "",
+      order: "",
+      recall_order: recall_order,
+      questions: "",
+      type: "",
+      sentence: "",
+      distractor: "",
     },
   };
 
@@ -257,10 +297,19 @@ export async function run({
     stimulus: jsPsych.timelineVariable("question"),
     choices: ["Yes", "No"],
     data: {
-      extras: {
-        condition: condition,
-        item: jsPsych.timelineVariable("qitem"),
-      },
+      condition: condition,
+      item: jsPsych.timelineVariable("qitem"),
+      question_order: "",
+      cumrt: "",
+      correct: "",
+      words: "",
+      distractors: "",
+      order: "",
+      recall_order: "",
+      questions: "",
+      type: "",
+      sentence: "",
+      distractor: "",
     },
   };
 
