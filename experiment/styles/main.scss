@@ -15,14 +15,13 @@
   margin: 10px;
 }
 
-#input {
-  width: "500px";
-}
-
 #legal {
   max-width: 800px;
+  text-align: center;
 }
-
+.container {
+  width: fit-content;
+}
 #intro {
   max-width: 800px;
   img {
@@ -50,7 +49,7 @@
   align-items: center;
 }
 input[type="text"] {
-  width: 800px;
+  width: 600px;
 }
 
 .slidecontainer {

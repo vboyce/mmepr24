@@ -153,7 +153,7 @@ export function gatherWordInfo(correct, distractor, trial_pars, ctx, order) {
   );
   let word = 0;
   let center = trial_pars.width * 0.5;
-  let padding = trial_pars.width * 0.1;
+  let padding = trial_pars.width * 0.07;
   const BASE_Y = delta_y * 1.5; // The height on which lines begin.
   let correct_text = null;
   let distractor_text = null;

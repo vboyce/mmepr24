@@ -11,7 +11,7 @@ export const COMP_Q = [
   },
   {
     item: "3",
-    q: "Does the secret service only protect the president, but not his/her family?",
+    q: "Does the secret service only protect the president, but not their family?",
     a: "no",
   },
   {
@@ -22,11 +22,6 @@ export const COMP_Q = [
   {
     item: "5",
     q: "Did the president make any promises on the campaign trail?",
-    a: "yes",
-  },
-  {
-    item: "6",
-    q: "Will the president have the power to draft bills?",
     a: "yes",
   },
   {

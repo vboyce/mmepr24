@@ -13,10 +13,11 @@ import MazePlugin from "./maze.js";
 
 import { initJsPsych } from "jspsych";
 import SprPlugin from "./spr.js";
+import browserCheck from "@jspsych/plugin-browser-check";
 import HtmlButtonResponsePlugin from "@jspsych/plugin-html-button-response";
 import CallFunctionPlugin from "@jspsych/plugin-call-function";
 import cloze from "./cloze.js";
-import jsPsychSurveySlider from "@jspsych-contrib/plugin-survey-slider";
+import SurveySliderPlugin from "./slider.js";
 import survey from "@jspsych/plugin-survey";
 import { proliferate } from "./proliferate.js";
 
@@ -34,7 +35,8 @@ import { MAZE_STIM } from "./maze_stim.js";
 
 import {
   CONSENT,
-  POST_SURVEY_QS,
+  POST_SURVEY_QS_1,
+  POST_SURVEY_QS_2,
   SPR_INST,
   DEBRIEF,
   EVENT_INST,
@@ -45,10 +47,15 @@ const maze_item = build_maze(MAZE_STIM, COMP_Q);
 const cloze_item = build_cloze(CLOZE_STIM);
 const event_item = build_event();
 
+// for testing
 const she_items = test_maze(MAZE_STIM, COMP_Q, "she");
 const he_items = test_maze(MAZE_STIM, COMP_Q, "he");
 const they_items = test_maze(MAZE_STIM, COMP_Q, "they");
 const start_maze = MAZE_STIM.filter((i) => i.item == "start");
+
+//randomize whether they say the prefer question with DT or KH first
+const survey_questions =
+  Math.random() > 0.5 ? POST_SURVEY_QS_1 : POST_SURVEY_QS_2;
 
 let condition = get_condition();
 /**
@@ -73,6 +80,19 @@ export async function run({
     },
   });
 
+  let browserchecker = {
+    type: browserCheck,
+    features: ["width", "height", "mobile"],
+    minumum_width: 800,
+    minimum_height: 700,
+
+    inclusion_function: (data) => {
+      return data.mobile === false;
+    },
+    exclusion_message: (data) => {
+      return `<p>You must use a laptop/desktop computer to participate in this experiment.</p>`;
+    },
+  };
   let consent = {
     type: HtmlButtonResponsePlugin,
     stimulus: CONSENT,
@@ -82,9 +102,7 @@ export async function run({
 
   let post_test_questions = {
     type: survey,
-    preamble:
-      "Now please answer a couple of questions about your background.  This information will be stored in anonymous form and it will be impossible to link it to you.",
-    survey_json: POST_SURVEY_QS,
+    survey_json: survey_questions,
   };
 
   let end_experiment = {
@@ -145,9 +163,9 @@ export async function run({
   };
 
   let event_expectation = {
-    type: jsPsychSurveySlider,
+    type: SurveySliderPlugin,
     preamble: EVENT_INST,
-    require_movement: true,
+    require_movement: [true, true, false],
     questions: jsPsych.timelineVariable("questions"),
     data: {
       condition: condition,
@@ -158,7 +176,6 @@ export async function run({
     type: SprPlugin,
     prompt: "",
     style: "word",
-    //css_classes: ["tangram-display"],
     stimulus: jsPsych.timelineVariable("sentence"),
     feedback: "",
   };
@@ -224,7 +241,7 @@ export async function run({
   function getTimeline() {
     //////////////// timeline /////////////////////////////////
     let timeline = [];
-
+    timeline.push(browserchecker);
     timeline.push(consent);
     let maze_timeline = {
       timeline: [maze_instructions, maze_practice, maze_trial, comprehension_q],
@@ -264,12 +281,6 @@ export async function run({
       timeline: [maze_trial, comprehension_q],
       timeline_variables: they_items,
     };
-    condition = "e";
-    timeline.push(spr_timeline);
-    timeline.push(recall);
-    timeline.push(cloze_timeline);
-    timeline.push(maze_timeline);
-    timeline.push(event_timeline);
     switch (condition) {
       case "cloze-event":
         timeline.push(cloze_timeline);

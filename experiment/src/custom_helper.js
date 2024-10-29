@@ -25,14 +25,21 @@ function pop_random(items) {
 }
 
 export function get_condition() {
-  // order of conditions: cloze-event, event-cloze, maze-event, event-maze
+  // order of conditions: cloze-event, event-cloze, maze-event, event-maze, spr-event, event-spr
   // add SPR if we do that
   // ratio for now -- again negotiable
   // 2/3 task first, 1/3 task second
-  // 6:4 cloze:maze
-  // .4, .2, .27, .13
-  let cuts = [0.4, 0.6, 0.87, 1];
-  let conditions = ["cloze-event", "event-cloze", "maze-event", "event-maze"];
+  // 6:4:6 cloze:maze:spr
+  // [.25, .375, .542, .625, .875, 1]
+  let cuts = [0.25, 0.375, 0.542, 0.625, 0.875, 1];
+  let conditions = [
+    "cloze-event",
+    "event-cloze",
+    "maze-event",
+    "event-maze",
+    "spr-event",
+    "event-spr",
+  ];
   let value = Math.random();
   console.log(value);
   for (let i = 0; i < cuts.length; i++) {
@@ -51,7 +58,7 @@ export function build_maze(items, qs) {
     ["he", "she"],
     ["they", "they"],
   ];
-  let options = ["1", "2", "3", "4", "5", "6", "8", "9", "10", "11", "12"];
+  let options = ["1", "2", "3", "4", "5", "8", "9", "10", "11", "12"];
   shuffle(options);
 
   //choose a type
@@ -77,7 +84,7 @@ export function build_maze(items, qs) {
 
 export function build_cloze(items) {
   let item = pop_random(items);
-  item.partial = CLOZE_INST + item.partial + "%%";
+  item.partial = CLOZE_INST + "<br><p>" + item.partial + "</p>%%<br>";
   return [item];
 }
 
