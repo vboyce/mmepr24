@@ -1,0 +1,102 @@
+---
+title: "Check that we have data"
+output:
+  html_document:
+    toc: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = F)
+knitr::opts_chunk$set(dev = "png", dev.args = list(type = "cairo-png"))
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = F)
+library(tidyverse)
+library(viridis)
+library(here)
+library(ggthemes)
+library(knitr)
+library(jsonlite)
+
+theme_set(theme_bw())
+
+dat_loc <- "data/test_mme_3-trials.csv"
+
+
+ParseJSONColumn <- function(x) {
+ str_replace_all(x,"'",'"') %>% 
+    str_replace_all( 'Don"t know', "Don't know") %>% 
+    str_replace_all( 'don"t', "don't") |> 
+    str_replace_all("None", '"NA"') |> 
+    fromJSON(flatten = T)
+}
+```
+
+## Read in data
+
+TODO!!! Fix SPR & Maze "word"!!!
+
+```{r}
+raw <- read_csv(here(dat_loc)) |>
+  select(-proliferate.condition) |> 
+  filter(!is.na(condition))
+
+
+expectations <- raw |> 
+  filter(trial_type=="survey-slider") |> 
+  select(workerid, condition, response) |> 
+  mutate(response=map(response, ParseJSONColumn)) |> 
+  unnest(response) |> 
+  mutate(topic=names(response)) |> unnest(response)
+
+demographics <- raw |> 
+  filter(trial_type=="survey") |> 
+  select(workerid, condition, response) |> 
+  mutate(response=map(response, ParseJSONColumn)) |> 
+  unnest(response) |> 
+  mutate(topic=names(response)) |> unnest(response) |> 
+  mutate(response=ifelse(response=="NA", NA, response))
+
+include <- demographics |> filter(topic %in% c("residence", "citizen", "english")) |> 
+  filter(response=="Yes") |> group_by(workerid) |> tally() |> filter(n==3) |> select(workerid)
+
+cloze <- raw |> 
+  filter(trial_type=="cloze") |> 
+  select(workerid, item, response) |> 
+  mutate(response=map(response, ParseJSONColumn)) |> 
+  unnest(response)
+
+spr <- raw |> filter(trial_type=="spr") |> 
+  select(workerid, item, type, rt, sentence) |> 
+  mutate(words=str_split(sentence, " ")) |> 
+    mutate(rt=map(rt, ParseJSONColumn)) |> 
+  rowwise() |> 
+  mutate(  rt=list(rt[- 1])) |>
+  ungroup() |>   unnest(words, rt) |> 
+  group_by(workerid, item, sentence) |> 
+  mutate(word_number=row_number())
+  
+maze <- raw |> filter(trial_type=="maze") |> 
+  select(workerid, item, type, rt, correct, sentence, words, distractors) |> 
+  mutate(rt=map(rt, ParseJSONColumn),
+         correct=map(correct, ParseJSONColumn), 
+         words=map(words, ParseJSONColumn), 
+         distractors=map(distractors, ParseJSONColumn)) |> 
+  unnest(rt, correct, words, distractors) |> 
+  group_by(workerid, item, sentence) |> 
+  mutate(word_number=row_number())
+
+comp_question <- raw |> filter(trial_type=="html-button-response" & !is.na(item)) |> 
+  select(workerid, item, response, stimulus)
+# note that 0 means the first item in the list which was Yes 
+#(annoyingly unintuitive, but whatevs)
+ 
+recall_question <- raw |> filter(trial_type=="html-button-response" & !is.na(recall_order)) |> 
+  select(workerid, response, stimulus, recall_order) |> 
+  mutate(recall_order=map(recall_order, ParseJSONColumn)) |> 
+  rowwise() |> 
+  mutate(response=recall_order[as.numeric(response)+1]) |> 
+  select(-recall_order)
+
+```
+

@@ -97,7 +97,6 @@ export async function run({
     exclusion_message: (data) => {
       return `<p>You must use a laptop/desktop computer to participate in this experiment.</p>`;
     },
-    data: { extras: {} },
   };
   let consent = {
     type: HtmlButtonResponsePlugin,
@@ -152,7 +151,6 @@ export async function run({
     stimulus: SPR_INST,
     choices: ["Continue"],
     response_ends_trial: true,
-    data: { extras: {} },
   };
 
   let maze_trial = {
@@ -163,7 +161,7 @@ export async function run({
     prompt: "",
     data: {
       condition: condition,
-      item: jsPsych.timelineVariable("type"),
+      item: jsPsych.timelineVariable("item"),
       question_order: "",
       order: "",
       recall_order: "",
@@ -249,13 +247,11 @@ export async function run({
     style: "word",
     stimulus: "Press space in order to reveal the next word.",
     feedback: "",
-    data: { extras: { condition: condition } },
   };
   let spr_practice_q = {
     type: HtmlButtonResponsePlugin,
     stimulus: "Did the sentence you just read contain the word 'reveal'?",
     choices: ["Yes", "No"],
-    data: { extras: {} },
   };
 
   let recall = {
@@ -289,7 +285,6 @@ export async function run({
     distractor:
       "x-x-x treating okay guys suggests. x-x-x pre percent partners cops. x-x-x lord caused sing anti weird.",
     css_classes: ["maze-display"],
-    data: { extras: {} },
   };
 
   let comprehension_q = {
