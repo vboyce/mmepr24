@@ -29,9 +29,10 @@ export function get_condition() {
   // add SPR if we do that
   // ratio for now -- again negotiable
   // 2/3 task first, 1/3 task second
-  // 6:4:6 cloze:maze:spr
-  // [.25, .375, .542, .625, .875, 1]
-  let cuts = [0.25, 0.375, 0.542, 0.625, 0.875, 1];
+  // 5:3:5 cloze:maze:spr
+  // allocations
+  // [.256, .128, .154, .077, .257,  .128 ]
+  let cuts = [0.256, 0.384, 0.538, 0.615, 0.872, 1];
   let conditions = [
     "cloze-event",
     "event-cloze",
