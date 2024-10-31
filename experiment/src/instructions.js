@@ -163,7 +163,7 @@ export const POST_SURVEY_QS_1 = {
     {
       type: "radiogroup",
       title: "What is your political affiliation?",
-      name: "news",
+      name: "political_aff",
       choices: [
         "Democrat",
         "Republican",
@@ -321,7 +321,7 @@ export const POST_SURVEY_QS_2 = {
     {
       type: "radiogroup",
       title: "What is your political affiliation?",
-      name: "news",
+      name: "poltical_aff",
       choices: [
         "Democrat",
         "Republican",
