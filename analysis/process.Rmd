@@ -172,11 +172,11 @@ cloze <- exclude_participants(cloze_all) |>
       \(s){ case_when(
         str_starts(s, "she/he |he/she |the pres|the next pres|the next us pres|the new pres|the newly elected|the newly appointed|the 46|the 47") ~
           "hedged",
-        str_starts(s, "she|her|hers") ~ 
+        str_starts(s, "(?:she|her|hers)\\b") ~ 
           "pronoun female",
-        str_starts(s, "he|his|him") ~ 
+        str_starts(s, "(?:he|his|him)\\b") ~ 
           "pronoun male",
-        str_starts(s, "they|their|them") ~ 
+        str_starts(s, "(?:they|their|them)\\b") ~ 
           "pronoun neutral",
         str_starts(s, "trump|donald|president trump|president don") ~ 
           "Trump",
