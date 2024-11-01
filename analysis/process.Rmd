@@ -30,9 +30,6 @@ ParseJSONColumn <- function(x) {
     '([A-Za-z]+)n"t' = "\\1n't",
     '([A-Za-z]+)"s' = "\\1's",
     'States" ' = "States' ",
-    # 'nation"s' = "nation's",
-    # 'country"s' = "country's",
-    # 'president"s' = "president's",
     ": None" = ': "NA"' # don't replace "None" when it's a string 
   )) |> fromJSON(flatten = TRUE)
 }
@@ -168,7 +165,27 @@ exclude_participants <- function(df) filter(df, workerid %in% include$workerid)
 # Expectations
 expectations <- exclude_participants(expectations_all)
 # Cloze
-cloze <- exclude_participants(cloze_all)
+cloze <- exclude_participants(cloze_all) |>
+  mutate(
+    type = sapply(
+      tolower(trimws(response)), 
+      \(s){ case_when(
+        str_starts(s, "she/he |he/she |the pres|the next pres|the next us pres|the new pres|the newly elected|the newly appointed|the 46|the 47") ~
+          "hedged",
+        str_starts(s, "she|her|hers") ~ 
+          "pronoun female",
+        str_starts(s, "he|his|him") ~ 
+          "pronoun male",
+        str_starts(s, "they|their|them") ~ 
+          "pronoun neutral",
+        str_starts(s, "trump|donald|president trump|president don") ~ 
+          "Trump",
+        str_starts(s, "harris|kamala|president harris|president kamala|the vice pres|the first black|vice pres|vice-pres") ~ 
+          "Harris",
+        .default = "OTHER"
+      )})      
+  )
+
 # SPR
 spr <- exclude_participants(spr_all)
 spr <- spr |> mutate(included_rt = rt > 180 & rt < 5000)
@@ -192,8 +209,11 @@ comp_question <- exclude_participants(comp_question_all)
 recall_question <- exclude_participants(recall_question_all)
 ```
 
+TODO: exclusion by comrehension questions.
+
 # Preliminary plotting
 
+## Expectations
 ```{r}
 expectations |>
   ggplot(aes(response,topic)) + 
@@ -206,6 +226,22 @@ expectations |>
   geom_violin(draw_quantiles=c(.5))
 ```
 
+## Cloze
+
+```{r}
+cloze |> #filter(type!="OTHER") |>
+  mutate(category=case_when(
+    type %in% c("Harris", "pronoun female") ~ "female",
+    type %in% c("Trump", "pronoun male") ~ "male",
+    type %in% c("hedged", "pronoun neutral") ~ "neutral",
+    .default = "OTHER"
+  )) |>
+  ggplot(aes(category, fill=type)) + 
+  geom_bar() +
+  labs(title="Cloze responses")
+```
+
+## Maze
 ```{r}
 
 # Quick and dirty, get the pronouns for maze or spr target words
@@ -248,4 +284,9 @@ expectations |>
   ggplot(aes(probability_harris,rt,color=pronoun_gender)) + 
   geom_smooth(method="lm") +
   labs(x="belief that president will be Harris", y="Maze RT")
+```
+
+## SPR
+
+```{r}
 ```
