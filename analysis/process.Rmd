@@ -22,6 +22,11 @@ theme_set(theme_bw())
 
 trials_loc <- "data/mme_pre_election-trials.csv"
 workerids_loc <- "data/mme_pre_election-workerids.csv"
+prolific_demog_loc <- "data/prolific_export_672046da44b2b4ceb69f3c97.csv"
+
+cloze_stim_loc <- "experiment/exported_cloze_stim.csv"
+# comp_q_loc <- "experiment/exported_comp_q.csv"
+# maze_stim_loc <- "experiment/exported_maze_stim.csv"
 
 ParseJSONColumn <- function(x) {
   str_replace_all(x, c(
@@ -33,16 +38,27 @@ ParseJSONColumn <- function(x) {
     ": None" = ': "NA"' # don't replace "None" when it's a string 
   )) |> fromJSON(flatten = TRUE)
 }
-
-prolific_demog_loc <- "data/prolific_export_672046da44b2b4ceb69f3c97.csv"
 ```
 
 ## Read in data
 
 ```{r}
+# Read in raw data exported from proliferate
 raw <- read_csv(here(trials_loc)) |>
   select(-proliferate.condition) |> 
   filter(!is.na(condition))
+
+# Read in stimuli as exported locally from experiment
+cloze_stim <- read_csv(cloze_stim_loc)
+# comp_q <- read_csv(comp_q_loc)
+# maze_stim <- read_csv(maze_stim_loc)
+
+# Read in workerids data exported from proliferate
+workerids <- read_csv(here(workerids_loc)) |> 
+  rename(prolific_id=prolific_participant_id)
+# Read in prolific demographic info exported from Prolific
+prolific_demog_raw <- read_csv(here(prolific_demog_loc)) |>
+  rename(prolific_id=`Participant id`)
 
 expectations_all <- raw |>
   filter(trial_type == "survey-slider") |> 
@@ -55,15 +71,18 @@ expectations_all <- raw |>
 cloze_all <- raw |> 
   filter(trial_type=="cloze") |> 
   select(workerid, item, response) |> 
-  mutate(response=map(response, ParseJSONColumn)) |> 
-  unnest(response)
+  mutate(response=map(response, ParseJSONColumn), item=as.numeric(item)) |> 
+  unnest(response) |>
+  left_join(cloze_stim, join_by(item))
 
 spr_all <- raw |> filter(trial_type=="spr") |> 
   select(workerid, item, type, rt, sentence) |> 
   mutate(word=str_split(sentence, " "), rt=map(rt, ParseJSONColumn)) |> 
   rowwise() |> mutate(rt=list(rt[- 1])) |> ungroup() |> 
   unnest(c(word, rt)) |> 
-  mutate(.by=c(workerid, item, sentence), word_number=row_number()) 
+  mutate(.by=c(workerid, item, sentence), word_number=row_number()) |> 
+  separate(item, into=c("item1","item2"),sep="-", remove=F, convert=T) |>
+  separate(type, into=c("type1","type2"),sep="-", remove=F)
   
 maze_all <- raw |> filter(trial_type=="maze") |> 
   select(workerid, item, type, rt, correct, sentence, word=words, distractor=distractors) |> 
@@ -72,10 +91,12 @@ maze_all <- raw |> filter(trial_type=="maze") |>
          word=map(word, ParseJSONColumn), 
          distractor=map(distractor, ParseJSONColumn)) |> 
   unnest(c(rt, correct, word, distractor)) |>
-  mutate(correct=case_when(correct==0~FALSE,correct==1L~TRUE,.default=NA)) |>
-  mutate(.by=c(workerid, item, sentence), word_number=row_number())
+  mutate(correct=case_when(correct==0~FALSE,correct==1~TRUE,.default=NA)) |>
+  mutate(.by=c(workerid, item, sentence), word_number=row_number()) |> 
+  separate(item, into=c("item1","item2"),sep="-", remove=F, convert=T) |>
+  separate(type, into=c("type1","type2"),sep="-", remove=F)
 
-comp_question_all <- raw |> filter(trial_type=="html-button-response" & !is.na(item)) |> 
+comp_q_all <- raw |> filter(trial_type=="html-button-response" & !is.na(item)) |> 
   select(workerid, item, response, stimulus) |> 
   mutate(response=case_when(response=="0"~"Yes",response=="1"~"No",.default=response))
 # note that 0 means the first item in the list which was Yes 
@@ -87,16 +108,11 @@ recall_question_all <- raw |> filter(trial_type=="html-button-response" & !is.na
   rowwise() |> 
   mutate(response=recall_order[as.numeric(response)+1]) |> 
   select(-recall_order)
+
 ```
 
 Combine demographic info from Prolific and collected via survey
 ```{r}
-workerids <- read_csv(here(workerids_loc)) |> 
-  rename(prolific_id=prolific_participant_id)
-
-prolific_demog_raw <- read_csv(here(prolific_demog_loc)) |>
-  rename(prolific_id=`Participant id`)
-
 demographics <- raw |>
   filter(trial_type=="survey") |> 
   select(workerid, condition, response) |> 
@@ -116,24 +132,30 @@ demographics <- raw |>
   pivot_wider(names_from="topic",values_from="response") |>
   mutate(political_aff = coalesce(political_aff, TEMP)) |> select(-TEMP)
 
-### CHECK
+### CHECK for many-many relations between workerids and prolific_ids
 # look for any workerids that have multiple associated responses
-workerids_many_trials <- demographics |> group_by(workerid) |> filter(n() > 1) |> 
+workerids_many_from <- demographics |> group_by(workerid) |> filter(n() > 1) |> 
   pull(workerid) |> unique()
-if(length(workerids_many_trials)>1) warning("Some proliferate workerids are associated with multiple trials/demographic survey results. Will exclude them.")
+if(length(workerids_many_from)>1) warning(c(
+    "These proliferate workerids are associated with multiple trials/demographic survey results:",
+    workerids_many_from
+  ) |> paste(collapse="\n-\t"), "\n")
 # look for any prolific_ids that have multiple associated workerids
-prolificids_many_workerids <- workerids |> group_by(prolific_id) |> filter(n() > 1) |>
+prolificids_many_from <- workerids |> group_by(prolific_id) |> filter(n() > 1) |>
   pull(prolific_id) |> unique()
-if(length(prolificids_many_workerids)>1) warning("Some prolific_ids are associated with multiple proliferate workerids. Will exclude them.")
+if(length(prolificids_many_from)>1) warning(c(
+    "These prolific_ids are associated with multiple proliferate workerids:",
+    prolificids_many_from
+  ) |> paste(collapse="\n-\t"), "\n")
 
-# Remove any participants who somehow had multiple runs, or multiple prolific_ids
+# Exclude any participants in any many-to-many relations between workerids and prolific_ids
 demographics_and_prolific_uniq <- demographics |> 
-  filter(!(workerid %in% workerids_many_trials)) |>
+  filter(!(workerid %in% workerids_many_from)) |>
   left_join(workerids, join_by(workerid)) |>
-  filter(!(prolific_id %in% prolificids_many_workerids)) |>
+  filter(!(prolific_id %in% prolificids_many_from)) |>
   left_join(prolific_demog_raw, join_by(prolific_id))
 
-include <- demographics_and_prolific_uniq |> 
+included_participants <- demographics_and_prolific_uniq |> 
   filter(!(prolific_id %in% c("5dd32014b51b3e33ec0d07cc"))) |>
   filter(residence=="Yes", citizen=="Yes", english=="Yes") |>
   select(workerid,prolific_id) |> distinct()
@@ -160,31 +182,49 @@ compare_demographics(gender,Sex)
 # Exclusion
 
 ```{r}
-exclude_participants <- function(df) filter(df, workerid %in% include$workerid)
+exclude_participants <- function(df) filter(df, workerid %in% included_participants$workerid)
 
 # Expectations
 expectations <- exclude_participants(expectations_all)
 # Cloze
 cloze <- exclude_participants(cloze_all) |>
+## Map to different response types (preliminary step; to be hand inspected and corrected afterward)
   mutate(
-    type = sapply(
-      tolower(trimws(response)), 
-      \(s){ case_when(
-        str_starts(s, "she/he |he/she |the pres|the next pres|the next us pres|the new pres|the newly elected|the newly appointed|the 46|the 47") ~
-          "hedged",
-        str_starts(s, "(?:she|her|hers)\\b") ~ 
-          "pronoun female",
-        str_starts(s, "(?:he|his|him)\\b") ~ 
-          "pronoun male",
-        str_starts(s, "(?:they|their|them)\\b") ~ 
-          "pronoun neutral",
-        str_starts(s, "trump|donald|president trump|president don") ~ 
-          "Trump",
-        str_starts(s, "harris|kamala|president harris|president kamala|the vice pres|the first black|vice pres|vice-pres") ~ 
-          "Harris",
-        .default = "OTHER"
-      )})      
-  )
+    response_type = case_when(
+      str_detect(trimws(response), "(?i)^(he or she|she or he|she/he |he/she |the pres|the next pres|the next us pres|the new pres|the newly elected|the newly appointed|the 46|the 47)") ~
+        "hedged",
+      str_detect(trimws(response), "(?i)^(she|her|hers)\\b") ~
+        "pronoun female",
+      str_detect(trimws(response), "(?i)^(he|his|him)\\b") ~
+        "pronoun male",
+      !(str_ends(partial, "challenges, and one of") & str_detect(trimws(response), "(?i)^(them)\\b")) &
+      str_detect(trimws(response), "(?i)^(they|their|them)\\b") ~
+        "pronoun neutral",
+      str_detect(trimws(response), "(?i)^(trump|donald|president trump|president don)") ~
+        "Trump",
+      str_detect(trimws(response), "(?i)^(harris|kamala|president harris|president kamala|the first black)") ~
+        "Harris",
+      TRUE ~ "OTHER"
+    )
+  ) |> # Manual edits after hand inspection
+  mutate(response_type = case_when(
+    workerid == 2932 & item == 1  ~ "pronoun male", # used male pronoun just not first word
+    workerid == 1632 & item == 1  ~ "pronoun male", # used male pronoun just not first word
+    workerid == 1898 & item == 10  ~ "pronoun male", # used male pronoun just not first word
+    workerid == 2939 & item == 10  ~ "Trump", # used name just after preposition
+    workerid == 2575 & item == 2  ~ "pronoun male", # used male pronoun just after preposition
+    workerid %in% c(2519,2085) & item == 2  ~ "pronoun neutral", # used male pronoun just after preposition
+    workerid == 2874 & item == 1  ~ "hedged", # used male pronoun just not first word
+    workerid == 2083 & item == 12 ~ "pronoun neutral", # used neutral pronoun just after complementizer
+    workerid %in% c(2291,2608,1526) & item == 12 ~ "hedged", # used hedged form just after complementizer
+    workerid %in% c(1509,1527,2831,2456,2215,1676,2330,2365,2759,2420,2302,2058) & item == 12 ~ "hedged", # used hedged form just after "the safety/security of" (rather than "{pronoun}'s safety/security")
+    workerid == 1650 & item == 12 ~ "pronoun neutral", # used neutral form just after "the safety/security of" (rather than "{pronoun}'s safety/security")
+    TRUE ~ response_type
+  )) |> 
+  select(workerid,item,response,response_type,everything()) 
+# To inspect OTHER responses:
+cloze |> select(item,partial,response,response_type,everything()) |> mutate(partial = gsub("The next US president will be sworn into office in January 2025. ", "", partial)) |> arrange(partial) |> filter(item==12, str_detect(response,"safety")) |> print(n=Inf)
+
 
 # SPR
 spr <- exclude_participants(spr_all)
@@ -203,7 +243,7 @@ spr_with_next <- spr |> # include rts for next three words
 maze <- exclude_participants(maze_all)
 
 # Comp questions
-comp_question <- exclude_participants(comp_question_all)
+comp_q <- exclude_participants(comp_q_all)
 
 # Recall questions
 recall_question <- exclude_participants(recall_question_all)
@@ -229,20 +269,34 @@ expectations |>
 ## Cloze
 
 ```{r}
-cloze |> #filter(type!="OTHER") |>
+cloze |> #filter(response_type!="OTHER") |>
   mutate(category=case_when(
-    type %in% c("Harris", "pronoun female") ~ "female",
-    type %in% c("Trump", "pronoun male") ~ "male",
-    type %in% c("hedged", "pronoun neutral") ~ "neutral",
+    response_type %in% c("Harris", "pronoun female") ~ "female",
+    response_type %in% c("Trump", "pronoun male") ~ "male",
+    response_type %in% c("hedged", "pronoun neutral") ~ "neutral",
     .default = "OTHER"
   )) |>
-  ggplot(aes(category, fill=type)) + 
-  geom_bar() +
-  labs(title="Cloze responses")
+  ggplot(aes(category, fill=response_type)) + 
+  geom_bar() + #facet_wrap(~item) +
+  labs(title="Type of cloze responses")
+
+cloze |> #filter(response_type!="OTHER") |>
+  mutate(category=case_when(
+    response_type %in% c("Harris", "pronoun female") ~ "female",
+    response_type %in% c("Trump", "pronoun male") ~ "male",
+    response_type %in% c("hedged", "pronoun neutral") ~ "neutral",
+    .default = "OTHER"
+  )) |>
+  ggplot(aes(category, fill=response_type)) + 
+  geom_bar() + facet_wrap(~item) +
+  labs(title="Type of cloze responses, by item")
 ```
 
 ## Maze
 ```{r}
+maze_all |> count(item1,item2,type,type1,type2) |> 
+  ggplot(aes(factor(item1),factor(item2),size=n,color=type)) + 
+  geom_point() + facet_grid(type1~type2)
 
 # Quick and dirty, get the pronouns for maze or spr target words
 
@@ -289,4 +343,7 @@ expectations |>
 ## SPR
 
 ```{r}
+spr_all |> count(item1,item2,type,type1,type2) |> 
+  ggplot(aes(factor(item1),factor(item2),size=n,color=type)) + 
+  geom_point() + facet_grid(type1~type2)
 ```
