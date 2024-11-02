@@ -269,6 +269,18 @@ expectations |>
 ## Cloze
 
 ```{r}
+scale_fill_response_types <- scale_fill_manual(
+    values = c(
+      "Harris" = "blue",
+      "pronoun female" = "lightblue", 
+      "Trump" = "red",
+      "pronoun male" = "lightsalmon",
+      "hedged" = "darkgray",
+      "pronoun neutral" = "lightgray",
+      "OTHER" = "lightgreen"
+    ),
+    breaks = c("Harris", "pronoun female", "Trump", "pronoun male", "hedged", "pronoun neutral", "OTHER")
+  )
 cloze |> #filter(response_type!="OTHER") |>
   mutate(category=case_when(
     response_type %in% c("Harris", "pronoun female") ~ "female",
@@ -278,6 +290,7 @@ cloze |> #filter(response_type!="OTHER") |>
   )) |>
   ggplot(aes(category, fill=response_type)) + 
   geom_bar() + #facet_wrap(~item) +
+  scale_fill_response_types +
   labs(title="Type of cloze responses")
 
 cloze |> #filter(response_type!="OTHER") |>
@@ -289,6 +302,7 @@ cloze |> #filter(response_type!="OTHER") |>
   )) |>
   ggplot(aes(category, fill=response_type)) + 
   geom_bar() + facet_wrap(~item) +
+  scale_fill_response_types +
   labs(title="Type of cloze responses, by item")
 ```
 
