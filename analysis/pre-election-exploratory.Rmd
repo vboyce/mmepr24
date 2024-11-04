@@ -1,0 +1,292 @@
+---
+title: "Pre-election data EDA"
+output:
+  html_document:
+    toc: true
+    df_print: paged
+
+---
+
+# Exploratory data analysis plotting
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = F)
+knitr::opts_chunk$set(dev = "png", dev.args = list(type = "cairo-png"))
+knitr::opts_chunk$set(fig.width=12, fig.height=8) 
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = F)
+library(tidyverse)
+library(viridis)
+library(here)
+library(ggthemes)
+library(knitr)
+library(jsonlite)
+library(patchwork)
+
+theme_set(theme_bw())
+
+response_type_colors <- c(
+  "Harris" = "darkblue", "pronoun female" = "blue",
+  "Trump" = "darkred", "pronoun male" = "red",
+  "hedged" = "darkgreen", "pronoun neutral" = "green",
+  "ambiguous NP" = "lightgreen",
+  "OTHER" = "gray"
+)
+scale_fill_response_types <- scale_fill_manual(
+  values = response_type_colors,
+  breaks = names(response_type_colors)
+)
+candidate_colors <- c(
+  "Harris" = "darkblue", "Trump" = "darkred",
+  "other" = "gray"
+)
+pronoun_colors <- c(
+  "she" = "blue", "he" = "red",
+  "they" = "green"
+)
+scale_color_pronouns <- scale_color_manual(
+  values = pronoun_colors,
+  breaks = names(pronoun_colors)
+)
+
+recall_question <- read_csv(here("data/processed/recall_question.csv"))
+expectations <- read_csv(here("data/processed/expectations.csv")) |>
+  mutate(
+    candidate = recode(candidate, harris = "Harris", trump = "Trump"),
+    candidate = factor(candidate, levels = c("Harris", "Trump", "other"))
+  )
+cloze <- read_csv(here("data/processed/cloze.csv")) |> mutate(
+  response_type = factor(response_type,
+    levels = c(
+      "Harris", "pronoun female", "Trump", "pronoun male",
+      "hedged", "pronoun neutral", "ambiguous NP", "OTHER")))
+spr <- read_csv(here("data/processed/spr.csv")) |> # RTs are residualized
+  mutate(
+    nth_pronoun = factor(case_when(is_pron1~1, is_pron2~2, .default=NA)),
+    pronoun_gender = factor(case_when(is_pron1~type1, is_pron2~type2, .default=NA)) 
+  )
+# spr_all <- read_csv(here("data/processed/spr_all.csv"))
+maze <- read_csv(here("data/processed/maze.csv")) |> # Maze RTs are not residualized
+  mutate(
+    nth_pronoun = factor(case_when(is_pron1~1, is_pron2~2, .default=NA)),
+    pronoun_gender = factor(case_when(is_pron1~type1, is_pron2~type2, .default=NA)) 
+  )
+```
+
+## Expectations
+
+Check that we got a rough balance in event probability responses for the two candidates (given the uncertainty in polling and prediction markets, we should expect respondents to reflect this).
+```{r}
+# expectations |>
+#   ggplot(aes(response,topic)) +
+#   labs(y='candidate',title="responded probability of being next president") +
+#   geom_boxplot(draw_quantiles=c(.5))
+
+expectations |>
+  ggplot(aes(probability, candidate, color = candidate)) +
+  labs(
+    y = NULL,
+    title = "\"Who do you think will be the US president in February 2025?\"",
+    subtitle = "responses normalized per participant"
+  ) +
+  scale_color_manual(values = candidate_colors) +
+  # facet_grid(~condition) +
+  geom_jitter(size = 0.5, alpha = 0.5, color = "gray") +
+  stat_summary(fun.data = "mean_se", geom = "pointrange")
+```
+
+## Cloze
+
+```{r}
+cloze |> # filter(response_type!="OTHER") |>
+  mutate(category = case_when(
+    response_type %in% c("Harris", "pronoun female") ~ "female",
+    response_type %in% c("Trump", "pronoun male") ~ "male",
+    response_type %in% c("hedged", "pronoun neutral", "ambiguous NP") ~ "neutral",
+    .default = "OTHER"
+  )) |>
+  ggplot(aes(category, fill = response_type)) +
+  geom_bar() + # facet_wrap(~item) +
+  scale_fill_response_types +
+  labs(title = "Type of cloze responses")
+
+cloze |> # filter(response_type!="OTHER") |>
+  mutate(category = case_when(
+    response_type %in% c("Harris", "pronoun female") ~ "female",
+    response_type %in% c("Trump", "pronoun male") ~ "male",
+    response_type %in% c("hedged", "pronoun neutral", "ambiguous NP") ~ "neutral",
+    .default = "OTHER"
+  )) |>
+  mutate(partial = gsub("The next US president will be sworn into office in January 2025. ", "", partial)) |>
+  ggplot(aes(category, fill = response_type)) +
+  geom_bar() +
+  facet_wrap(ncol=4, ~ paste0(
+    sprintf("%02d", item), ":\n",
+    gsub("(.{40})", "\\1\n", partial)
+  )) +
+  scale_fill_response_types + 
+  labs(title = "Type of cloze responses, by item") +
+  theme(legend.position = "top", legend.direction = "horizontal")
+```
+
+## Maze
+Look at average Maze RT by gender of pronoun, and for each condition of two sentences presented.
+Shows an effect of gender (male pronoun is read faster than female, neutral is perhaps even faster than male).
+These Maze RTs are not residualized. But could be for slightly smaller std error probably.
+```{r}
+# maze |>
+#   count(item1, item2, type, type1, type2) |>
+#   ggplot(aes(factor(item1), factor(item2), size = n, color = type)) +
+#   geom_point() +
+#   facet_grid(type1 ~ type2)
+
+p_maze1 <- maze |>
+  filter(correct, is_target) |>
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+  stat_summary() +
+  scale_color_pronouns +
+  labs(title="Maze RT on pronouns by gender", color="pronoun gender",subtitle="overall")
+
+p_maze2 <- maze |>
+  filter(is_target) |>
+  filter(correct) |>
+  ggplot(aes(nth_pronoun, log(rt), color = factor(pronoun_gender))) +
+  stat_summary(position=position_dodge(width=.2)) +
+  facet_grid(~type,scales="free") +
+  scale_color_pronouns +
+  labs(title="Maze RT on pronouns by stimulus type",color="pronoun gender",
+  subtitle="(gender of pronoun in each of two sentences read back to back)")
+
+p_maze <- (p_maze1 / p_maze2 )+ plot_layout(guides="collect")
+p_maze
+```
+
+We can also look at the effect of event probability (who the participant thinks will be president) on pronoun RT bias
+```{r}
+# Plot Maze RT on pronouns by gender against belief that president will be female
+expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  # left_join(demographics_and_prolific_uniq) |>
+  left_join(maze) |>
+  filter(correct, is_target) |>
+  ggplot(aes(probability_Harris, log(rt), color = pronoun_gender)) +
+  geom_smooth(method = "lm") +
+  # geom_point(alpha=0.25) +
+  scale_color_pronouns +
+  labs(title="Maze RT on pronouns, plotted against probability of female president",
+    x = "belief that president will be Harris", y = "Maze RT")
+
+```
+
+## SPR
+Likewise look at average SPR RT by gender of pronoun, and for each condition of two sentences presented.
+These RTs are residualized.
+Results look similar to Maze RTs, but are less pronounced/lower power.
+
+Still, I think high enough power that we don't need to run further trials.
+```{r}
+# spr |>
+#   count(item1, item2, type, type1, type2) |>
+#   ggplot(aes(factor(item1), factor(item2), size = n, color = type)) +
+#   geom_point() +
+#   facet_grid(type1 ~ type2)
+
+p_spr1 <- spr |>
+  filter(is_target) |>
+  ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender))) +
+  stat_summary() +
+  scale_color_pronouns +
+  labs(title="SPR RT on pronouns by gender", color="pronoun gender",
+    subtitle="overall (using RTs averaged across 4-word window for spillover)", 
+    y="log residualized RT")
+
+
+p_spr2 <- spr |>
+  filter(is_target) |>
+  ggplot(aes(nth_pronoun, log(rt_gmean), color = factor(pronoun_gender))) +
+  stat_summary(position=position_dodge(width=.2)) +
+  facet_grid(~type,scales="free") +
+  scale_color_pronouns +
+  labs(title="SPR RT on pronouns by  stimulus type", color="pronoun gender",
+  subtitle="(RTs averaged across 4-word window for spillover)\n(gender of pronoun in each of two sentences read back to back)")
+p_spr <- (p_spr1 / p_spr2 )+ plot_layout(guides="collect")
+p_spr
+```
+```{r}
+
+## Inspect:
+## Comparing different lags,
+## rather than just using the mean over the whole window
+rt_lag_colors <- c(
+  `w_{i}`="black",
+  `w_{i+1}`="darkgray",
+  `w_{i+2}`="gray",
+  `w_{i+3}`="lightgray",
+  avg="purple"
+)
+scale_color_rt_lag <- scale_color_manual(
+  values = rt_lag_colors,
+  breaks = names(rt_lag_colors)
+)
+
+
+
+spr_longer <- spr |> select(-rt.raw) |>
+  filter(is_target) |>
+  pivot_longer(
+    cols = starts_with("rt"), names_to = "RT lag", values_to = "reading_time"
+  ) |>
+  mutate(`RT lag` = case_when(
+    `RT lag`=="rt_gmean" ~ "avg",
+    str_starts(`RT lag`, "rt_") ~ paste(gsub("rt_(.)next", "w_{i+\\1}", `RT lag`)),
+    `RT lag`=="rt" ~ "w_{i}",
+  ))
+
+p_spr_lags1 <- spr_longer |>
+  ggplot(aes(`RT lag`, log(reading_time), color = `RT lag`)) +
+  stat_summary() +
+  facet_grid(~pronoun_gender, scales = "free") +
+  scale_color_rt_lag +
+  labs(
+    title = "SPR by gender", 
+    subtitle="Looking at RT with different lags w_{i+n}, where w_i = target pronoun. \nAlso showing geometric_mean(w_{i+n}) for n = {0,...,3}", 
+    y="residualized log RT"
+  )
+
+p_spr_lags2 <- spr_longer |> 
+  summarize(
+    .by=c(`RT lag`, nth_pronoun, type), 
+    m=mean(log(reading_time)), 
+    se=sd(log(reading_time))/sqrt(n())
+  ) |>
+  ggplot(aes(x=nth_pronoun, group=`RT lag`, y=m, ymin=m-se, ymax=m+se, color = `RT lag`)) +
+  geom_pointrange(position=position_dodge(width=.4)) +
+  facet_grid(~type, scales = "free") +
+  geom_line() +
+  scale_color_rt_lag +
+  labs(title="Maze RT on pronouns by stimulus type",
+  subtitle="(gender of pronoun in each of two sentences read back to back)",
+  y="residualized log RT"
+  )
+p_spr_lags <- (p_spr_lags1 / p_spr_lags2 )+ plot_layout(guides="collect")
+p_spr_lags
+```
+
+We could also try to look at the effect of event belief, but this is too low power with SPR: 
+```{r}
+# Plot Maze RT on pronouns by gender against belief that president will be female
+expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  # left_join(demographics_and_prolific_uniq) |>
+  left_join(spr) |>
+  filter(is_target) |>
+  ggplot(aes(probability_Harris, log(rt_gmean), color = pronoun_gender)) +
+  geom_smooth(method = "lm") +
+  # geom_point(alpha=0.25) +
+  labs(title="SPR RT on pronouns, plotted against probability of female president",
+    x = "belief that president will be Harris", y = "Maze RT")
+
+```
+Yet given that we can see it plausibly in the Maze data, we don't necessarily need this.
