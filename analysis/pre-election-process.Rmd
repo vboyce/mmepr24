@@ -222,6 +222,7 @@ demographics <- raw |>
 
 ### CHECK for many-many relations between workerids and prolific_ids
 # look for any workerids that have multiple associated responses
+str_tail <- function(s,n=15) paste0("...", substr(s, nchar(s) - n, nchar(s)))
 workerids_many_from <- demographics |>
   group_by(workerid) |>
   filter(n() > 1) |>
@@ -234,8 +235,9 @@ if (length(workerids_many_from) > 1) {
   warning("Some prolific_ids are associated with multiple proliferate workerids. Will exclude.")
   workerids |>
     filter(workerid %in% workerids_many_from) |>
-    summarize(paste(prolific_id, collapse = ", "), .by = workerid)
+    summarize(paste(str_tail(prolific_id), collapse = ", "), .by = workerid)
 }
+
 # look for any prolific_ids that have multiple associated workerids
 prolificids_many_from <- workerids |>
   group_by(prolific_id) |>
@@ -246,7 +248,7 @@ if (length(prolificids_many_from) > 1) {
   warning("Some prolific_ids are associated with multiple proliferate workerids. Will exclude.")
   workerids |>
     filter(prolific_id %in% prolificids_many_from) |>
-    summarize(paste(workerid, collapse = ", "), .by = prolific_id)
+    summarize(paste(workerid, collapse = ", "), .by = (prolific_id)) |> mutate(prolific_id=str_tail(prolific_id))
 }
 ```
 
@@ -285,7 +287,7 @@ compare_demographics <- function(Col1, Col2, data = demographics_and_prolific_un
   } else {
     message("Fully matched.")
   }
-  not_matched |> select(workerid, prolific_id, {{ Col1 }}, {{ Col2 }})
+  not_matched |> select(workerid, {{ Col1 }}, {{ Col2 }})
 }
 # Some places where demographics reported in survey in experiment don't match those from prolific
 compare_demographics(political_aff, `U.s. political affiliation`)
@@ -294,10 +296,21 @@ compare_demographics(gender, Sex)
 ```
 
 ```{r}
-# Recall questions
-recall_question <- exclude_participants(recall_question_all)
+
 # Expectations
 expectations <- exclude_participants(expectations_all, use_comp_q = F)
+# Conditions
+conditions <- expectations |> select(workerid,condition) |> distinct()
+# check
+if (
+  0!= 
+  conditions |> summarize(
+    .by=workerid, n=n_distinct(condition), paste(condition,collapse=" ")) |> 
+  filter(n>1) |> nrow()
+) warning("Some workerids have multiple conditions.")
+# Recall questions
+recall_question <- exclude_participants(recall_question_all) |> 
+  left_join(conditions,join_by(workerid))
 # Cloze
 cloze <- exclude_participants(cloze_all, use_comp_q = F) |>
   ## Map to different response types (preliminary step; to be hand inspected and corrected afterward)
@@ -325,7 +338,9 @@ cloze <- exclude_participants(cloze_all, use_comp_q = F) |>
     workerid %in% c(1676, 2291) & item == 12 ~ "ambiguous NP", # used uncaught animate noun phrase to refer to president ambiguously
     TRUE ~ response_type
   )) |>
-  select(workerid, item, response, response_type, everything())
+  select(workerid, item, response, response_type, everything()) |> 
+  left_join(conditions,join_by(workerid))
+  
 # To inspect OTHER responses:
 # cloze |> select(item,partial,response,response_type,everything()) |> mutate(partial = gsub("The next US president will be sworn into office in January 2025. ", "", partial)) |> arrange(partial) |> filter(item==12, str_detect(response,"safety")) |> print(n=Inf)
 
@@ -334,7 +349,8 @@ cloze <- exclude_participants(cloze_all, use_comp_q = F) |>
 ```{r}
 # SPR
 spr_rts <- exclude_participants(spr_all) |>
-  mutate(included_rt = rt > 180 & rt < 5000)
+  mutate(included_rt = rt > 180 & rt < 5000) |> 
+  left_join(conditions,join_by(workerid))
 
 message(
   "Proportion RTs excluded:  ",
@@ -388,13 +404,16 @@ spr_rts$rt <- exp(residuals(m) + lme4::fixef(m)[1])
 spr <- spr_rts |> arrange(item1,item2,type1,type2,workerid, word_number)
 
 # Maze
-maze <- exclude_participants(maze_all)
+maze <- exclude_participants(maze_all) |> 
+  left_join(conditions,join_by(workerid))
 ```
 
 
 # Export
 
 ```{r export}
+participants <- demographics_and_prolific_uniq |> select(-prolific_id)
+
 # Export the dataframes to CSV files
 write_csv(recall_question, here("data/processed/recall_question.csv"))
 write_csv(expectations, here("data/processed/expectations.csv"))
@@ -402,5 +421,5 @@ write_csv(cloze, here("data/processed/cloze.csv"))
 write_csv(spr, here("data/processed/spr.csv"))
 write_csv(spr_all, here("data/processed/spr_all.csv"))
 write_csv(maze, here("data/processed/maze.csv"))
-write_csv(demographics_and_prolific_uniq, here("data/processed/participants.csv"))
+write_csv(participants, here("data/processed/participants.csv"))
 ```

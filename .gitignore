@@ -3,3 +3,7 @@
 .Rapp.history
 .Renviron
 .Rproj.user/
+
+# Don't track sensitive data files
+data/*-workerids.csv
+data/prolific_export_*.csv
