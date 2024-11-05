@@ -297,7 +297,7 @@ compare_demographics(gender, Sex)
 # Recall questions
 recall_question <- exclude_participants(recall_question_all)
 # Expectations
-expectations <- exclude_participants(expectations_all)
+expectations <- exclude_participants(expectations_all, use_comp_q = F)
 # Cloze
 cloze <- exclude_participants(cloze_all, use_comp_q = F) |>
   ## Map to different response types (preliminary step; to be hand inspected and corrected afterward)
@@ -402,4 +402,5 @@ write_csv(cloze, here("data/processed/cloze.csv"))
 write_csv(spr, here("data/processed/spr.csv"))
 write_csv(spr_all, here("data/processed/spr_all.csv"))
 write_csv(maze, here("data/processed/maze.csv"))
+write_csv(demographics_and_prolific_uniq, here("data/processed/participants.csv"))
 ```
