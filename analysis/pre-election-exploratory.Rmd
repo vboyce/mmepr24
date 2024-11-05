@@ -178,6 +178,22 @@ We can also look at the effect of event probability (who the participant thinks 
 # Plot Maze RT on pronouns by gender against belief that president will be female
 expectations |>
   pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  left_join(maze) |>
+  filter(correct, is_target) |> 
+  ggplot(aes(probability_Harris, log(rt), color = pronoun_gender)) +
+  geom_smooth(method = "lm") +
+  scale_color_pronouns +
+  labs(title="Maze RT on pronouns, plotted against probability of female president",
+    x = "belief that president will be Harris", y = "Maze RT (log scale)")
+
+```
+
+And breaking down by order
+
+```{r}
+expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
   select(workerid, starts_with("probability"), condition) |>
   left_join(maze) |>
   filter(correct, is_target) |> 
@@ -190,7 +206,7 @@ expectations |>
     x = "belief that president will be Harris", y = "Maze RT (log scale)")
 ```
 
-And participant age
+Or, we could look at participant age
 ```{r}
 participants |>
   select(workerid, gender, age) |>
