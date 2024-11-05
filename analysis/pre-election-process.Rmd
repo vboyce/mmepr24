@@ -23,6 +23,10 @@ library(jsonlite)
 theme_set(theme_bw())
 
 trials_loc <- "data/mme_pre_election-trials.csv"
+
+# These two files contain prolific IDs,
+# which should not be shared publicly, so aren't in the public repo.
+# The processed data files output at the end of this notebook are safe.
 workerids_loc <- "data/mme_pre_election-workerids.csv"
 prolific_demog_loc <- "data/prolific_export_672046da44b2b4ceb69f3c97.csv"
 
