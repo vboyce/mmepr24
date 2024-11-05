@@ -104,21 +104,19 @@ is_pronoun <- function(word) {
 
 # Add in the individual sentences used as stimuli
 sprmaze_stim <- sprmaze_stim |>
-  mutate(
-    .by = c(item, sentence),
-    s_len = str_count(sentence, "\\S+")
-  ) |>
-  mutate(
-    words = str_split(sentence, " "),
+  mutate(.by = c(item, sentence), s_len = str_count(sentence, "\\S+")) |>
+  mutate(words = str_split(sentence, " "),
     # Note in items 3 and 11 there is a second pronoun, but not
     # referring to the president.
     pron_pos_s = map_int(words, ~ which(is_pronoun(.x))[1])
-  ) |>
-  select(-words)
+  ) |> select(-words)
 
 spr_all$s0 <- filter(sprmaze_stim, item == "start")$sentence[[1]]
 s0_len <- filter(sprmaze_stim, item == "start")$s_len[[1]]
-sprmaze_stim_s12 <- mutate(filter(sprmaze_stim |> select(-distractor), item != "start"), item = as.numeric(item))
+sprmaze_stim_s12 <- mutate(
+  filter(sprmaze_stim |> select(-distractor), item != "start"),
+  item = as.numeric(item)
+)
 spr_all <- spr_all |>
   left_join(sprmaze_stim_s12, join_by(item1 == item, type1 == type)) |>
   rename(s1 = sentence, s1_len = s_len, pron_pos_s1 = pron_pos_s) |>
@@ -130,9 +128,18 @@ spr_all <- spr_all |>
     is_target = is_pron1 | is_pron2,
     is_first_in_sent = word_number == 1 |
       word_number == s0_len + 1 |
-      word_number == s0_len + s1_len + 1
-  ) |>
-  select(-s1_len, -s2_len, pron_pos_s1, pron_pos_s2)
+      word_number == s0_len + s1_len + 1,
+    word_number_in_s = case_when(
+      word_number <= s0_len ~ word_number,
+      word_number <= s0_len + s1_len ~ word_number - s0_len,
+      .default = word_number - s0_len - s1_len
+    ),
+    in_s = case_when(
+      word_number <= s0_len ~ 0,
+      word_number <= s0_len + s1_len ~ 1,
+      .default = 2
+    )
+  )
 
 maze_all <- raw |>
   filter(trial_type == "maze") |>
@@ -164,9 +171,18 @@ maze_all <- maze_all |>
     is_target = is_pron1 | is_pron2,
     is_first_in_sent = word_number == 1 |
       word_number == s0_len + 1 |
-      word_number == s0_len + s1_len + 1
-  ) |>
-  select(-s1_len, -s2_len, pron_pos_s1, pron_pos_s2)
+      word_number == s0_len + s1_len + 1,
+    word_number_in_s = case_when(
+      word_number <= s0_len ~ word_number,
+      word_number <= s0_len + s1_len ~ word_number - s0_len,
+      .default = word_number - s0_len - s1_len
+    ),
+    in_s = case_when(
+      word_number <= s0_len ~ 0,
+      word_number <= s0_len + s1_len ~ 1,
+      .default = 2
+    )
+  )
 
 recall_question_all <- raw |>
   filter(trial_type == "html-button-response" & !is.na(recall_order)) |>
