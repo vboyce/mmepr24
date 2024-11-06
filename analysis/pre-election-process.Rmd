@@ -273,7 +273,8 @@ if (length(prolificids_many_from) > 1) {
 ```
 
 ```{r}
-## Exclude any participants in any many-to-many relations between workerids and prolific_ids
+## Exclude any participants in any many-to-many
+## relations between workerids and prolific_ids
 demographics_and_prolific_uniq <- demographics |>
   filter(!(workerid %in% workerids_many_from)) |>
   left_join(workerids, join_by(workerid)) |>
@@ -297,8 +298,11 @@ exclude_participants <- function(df, use_comp_q = T) {
 ```
 
 ```{r}
-# We can use the demographics from the survey where they don't agree with demographics from prolific.  But just to check how much they disagree:
-compare_demographics <- function(Col1, Col2, data = demographics_and_prolific_uniq) {
+# We can use the demographics from the survey where they don't agree
+# with demographics from prolific.  But just to check how much they disagree:
+compare_demographics <- function(
+  Col1, Col2, data = demographics_and_prolific_uniq
+) {
   not_matched <- filter(data, {{ Col1 }} != {{ Col2 }})
   pct_matched <- nrow(not_matched) / nrow(data) * 100
   if (nrow(not_matched) > 0) {
@@ -309,7 +313,8 @@ compare_demographics <- function(Col1, Col2, data = demographics_and_prolific_un
   }
   not_matched |> select(workerid, {{ Col1 }}, {{ Col2 }})
 }
-# Some places where demographics reported in survey in experiment don't match those from prolific
+# Some places where demographics reported in survey
+# in experiment don't match those from prolific
 compare_demographics(political_aff, `U.s. political affiliation`)
 compare_demographics(age, Age)
 compare_demographics(gender, Sex)
@@ -323,17 +328,18 @@ expectations <- exclude_participants(expectations_all, use_comp_q = F)
 conditions <- expectations |> select(workerid,condition) |> distinct()
 # check
 if (
-  0!= 
+  0!=
   conditions |> summarize(
-    .by=workerid, n=n_distinct(condition), paste(condition,collapse=" ")) |> 
+    .by=workerid, n=n_distinct(condition), paste(condition,collapse=" ")) |>
   filter(n>1) |> nrow()
 ) warning("Some workerids have multiple conditions.")
 # Recall questions
-recall_question <- exclude_participants(recall_question_all) |> 
+recall_question <- exclude_participants(recall_question_all) |>
   left_join(conditions,join_by(workerid))
 # Cloze
 cloze <- exclude_participants(cloze_all, use_comp_q = F) |>
-  ## Map to different response types (preliminary step; to be hand inspected and corrected afterward)
+  ## Map to different response types
+  # (preliminary step; to be hand inspected and corrected afterward)
   mutate(
     response_type = case_when(
       str_detect(response, "(?i)\\b(he or she|she or he|she/he|he/she)\\b") ~
@@ -342,7 +348,8 @@ cloze <- exclude_participants(cloze_all, use_comp_q = F) |>
         "pronoun female",
       str_detect(response, "(?i)\\b(he|his|him)\\b") ~
         "pronoun male",
-      !(str_ends(partial, "challenges, and one of") & str_detect(trimws(response), "(?i)^(them)\\b")) &
+      !(str_ends(partial, "challenges, and one of") &
+          str_detect(trimws(response), "(?i)^(them)\\b")) &
         str_detect(response, "(?i)\\b(they|their|them)\\b") ~
         "pronoun neutral",
       str_detect(response, "(?i)\\b(trump|donald|president trump|president don)") ~
@@ -355,21 +362,31 @@ cloze <- exclude_participants(cloze_all, use_comp_q = F) |>
     )
   ) |> # Manual edits after some hand inspection
   mutate(response_type = case_when(
-    workerid %in% c(1676, 2291) & item == 12 ~ "ambiguous NP", # used uncaught animate noun phrase to refer to president ambiguously
+    # used uncaught animate noun phrase to refer to president ambiguously
+    workerid %in% c(1676, 2291) & item == 12 ~ "ambiguous NP",
     TRUE ~ response_type
   )) |>
-  select(workerid, item, response, response_type, everything()) |> 
+  select(workerid, item, response, response_type, everything()) |>
   left_join(conditions,join_by(workerid))
-  
+ 
 # To inspect OTHER responses:
-# cloze |> select(item,partial,response,response_type,everything()) |> mutate(partial = gsub("The next US president will be sworn into office in January 2025. ", "", partial)) |> arrange(partial) |> filter(item==12, str_detect(response,"safety")) |> print(n=Inf)
+cloze |> 
+  select(item,partial,response,response_type,everything()) |>
+  mutate(
+    partial = gsub(
+      "The next US president will be sworn into office in January 2025. ",
+      "", partial)
+  ) |>
+  arrange(partial) |>
+  filter(item==12, str_detect(response,"safety")) |>
+  print(n=Inf)
 
 ```
 
 ```{r}
 # SPR
 spr_rts <- exclude_participants(spr_all) |>
-  mutate(included_rt = rt > 180 & rt < 5000) |> 
+  mutate(included_rt = rt > 180 & rt < 5000) |>
   left_join(conditions,join_by(workerid))
 
 message(
@@ -412,9 +429,9 @@ spr_rts <- spr_rts |>
   inner_join(spr_mean_rts)
 
 m <- lme4::lmer(
-  log(rt) ~ 1 + 
-    (scale(log(gmean_rt)) + is_first_in_sent + scale(word_number) + scale(nchar) + comma + period)^2 + 
-    (1|item), 
+  log(rt) ~ 1 +
+    (scale(log(gmean_rt)) + is_first_in_sent + scale(word_number) + scale(nchar) + comma + period)^2 +
+    (1|item),
   spr_rts
 )
 summary(m)
@@ -424,7 +441,7 @@ spr_rts$rt <- exp(residuals(m) + lme4::fixef(m)[1])
 spr <- spr_rts |> arrange(item1,item2,type1,type2,workerid, word_number)
 
 # Maze
-maze <- exclude_participants(maze_all) |> 
+maze <- exclude_participants(maze_all) |>
   left_join(conditions,join_by(workerid))
 ```
 
