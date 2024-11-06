@@ -13,7 +13,7 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 knitr::opts_chunk$set(dev = "png", dev.args = list(type = "cairo-png"))
-knitr::opts_chunk$set(fig.width = 12, fig.height = 10)
+knitr::opts_chunk$set(fig.width = 12, fig.height = 8)
 options(knitr.table.format = "html")
 library(tidyverse)
 library(viridis)
@@ -90,7 +90,7 @@ message("                       total: ", np_cloze + np_maze + np_spr)
 ## Expectations
 
 Check that we got a rough balance in event probability responses for the two candidates (given the uncertainty in polling and prediction markets, we should expect respondents to reflect this).
-```{r}
+```{r fig.height=4}
 # expectations |>
 #   ggplot(aes(response,topic)) +
 #   labs(y='candidate',title="responded probability of being next president") +
@@ -110,7 +110,7 @@ expectations |>
 ```
 
 Looking for order effects, (combining all orders that start with "event" to one, for this plot, since all are identical wrt this data)
-```{r}
+```{r fig.height=6}
 expectations |>
   mutate(condition = case_when(
     condition |> str_starts("event-") ~ "event-[cloze/maze/spr]",
@@ -130,14 +130,15 @@ expectations |>
 
 ## Cloze
 
-```{r}
-cloze |> # filter(response_type!="OTHER") |>
+```{r fig.height=6}
+cloze_categorized <- cloze |> # filter(response_type!="OTHER") |>
   mutate(category = case_when(
     response_type %in% c("Harris", "pronoun female") ~ "female",
     response_type %in% c("Trump", "pronoun male") ~ "male",
     response_type %in% c("hedged", "pronoun neutral", "ambiguous NP") ~ "neutral",
     .default = "OTHER"
-  )) |>
+  ))
+cloze_categorized |>
   ggplot(aes(category, fill = response_type)) +
   geom_bar() + # facet_wrap(~item) +
   geom_text(stat = "count", aes(label = ..count..), color = "white", position = position_stack(vjust = 0.5)) +
@@ -147,14 +148,8 @@ cloze |> # filter(response_type!="OTHER") |>
 ```
 
 Faceting by order:
-```{r}
-cloze |> # filter(response_type!="OTHER") |>
-  mutate(category = case_when(
-    response_type %in% c("Harris", "pronoun female") ~ "female",
-    response_type %in% c("Trump", "pronoun male") ~ "male",
-    response_type %in% c("hedged", "pronoun neutral", "ambiguous NP") ~ "neutral",
-    .default = "OTHER"
-  )) |>
+```{r fig.height=6}
+cloze_categorized |>
   ggplot(aes(category, fill = response_type)) +
   geom_bar() +
   geom_text(stat = "count", aes(label = ..count..), color = "white", position = position_stack(vjust = 0.5)) +
@@ -164,6 +159,27 @@ cloze |> # filter(response_type!="OTHER") |>
   theme(legend.position = "top", legend.direction = "horizontal")
 ```
 In the event-cloze order there seems to be a somewhat larger bias toward producing male pronouns or male referents/Trump.
+
+_But it seems the difference between orders here is actually not significant, per Titus' binomial 95%-HPDI test:_
+```{r fig.width = 5, fig.height = 5, out.width="50%"}
+# remotes::install_github("tmalsburg/binomialCRIs")
+if (require("binomialCRIs")) {
+  F_pre <- 21; M_pre <- 28;  F_post <- 7; M_post <- 16
+  plot_binomial_hpdi(
+    n_successes = F_pre, n_trials = F_pre + M_pre,
+    prob = 0.95
+  ) +
+    geom_vline(xintercept = F_post / (F_post + M_post)) +
+    labs(
+      title = "Binomial HDPI check",
+      subtitle = paste(
+        "posterior for proportion fem. in cloze-event\n",
+        "vertical line at proportion fem. in event-cloze"
+      )
+    )
+}
+
+```
 
 Breaking down further by gender:
 ```{r}
@@ -193,6 +209,8 @@ For female-identifying participants, there is no such marked difference between 
 Across participant-genders, there is a smaller proportion of neutral/hedged referents when completing sentences after 
 event estimation, compared to before event-estimation.
 
+_But this is all something that would take larger sample size to actually assess._
+
 ```{r}
 cloze |> # filter(response_type!="OTHER") |>
   mutate(category = case_when(
@@ -218,11 +236,11 @@ Look at average Maze RT by gender of pronoun, and for each condition of two sent
 Shows an effect of gender (male pronoun is read faster than female, neutral is perhaps even faster than male).
 These Maze RTs are not residualized. But could be for slightly smaller std error probably.
 ```{r}
-maze |>
-  count(item1, item2, type, type1, type2) |>
-  ggplot(aes(factor(item1), factor(item2), size = n, color = type)) +
-  geom_point() +
-  facet_grid(type1 ~ type2)
+# maze |>
+#   count(item1, item2, type, type1, type2) |>
+#   ggplot(aes(factor(item1), factor(item2), size = n, color = type)) +
+#   geom_point() +
+#   facet_grid(type1 ~ type2)
 ```
 
 ```{r}
@@ -250,7 +268,7 @@ p_maze
 ```
 
 Faceting by order
-```{r}
+```{r fig.height=4}
 maze |>
   filter(correct, is_target) |>
   ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
@@ -264,7 +282,7 @@ There is an overall less pronounced bias for male pronoun for participants who
 did the maze task following the event estimation (event-maze) versus before (maze-event).
 
 Faceting also by participant gender
-```{r}
+```{r fig.height=6}
 participants |>
   select(workerid, gender) |>
   inner_join(maze, join_by(workerid)) |>
@@ -284,7 +302,7 @@ whereas for males, the bias is much larger in maze-event versus event-maze.
 
 
 And broken down by participant reported political affiliation
-```{r}
+```{r fig.height=6}
 participants |>
   select(workerid, political_aff) |>
   inner_join(maze, join_by(workerid)) |>
@@ -294,7 +312,7 @@ participants |>
   facet_grid(condition ~ political_aff) +
   scale_color_pronouns +
   labs(
-    title = "SPR RT on pronouns by participant's reported political affil.",
+    title = "Maze RT on pronouns by participant's reported political affil.",
     color = "pronoun gender", subtitle = "overall"
   )
 ```
@@ -303,7 +321,7 @@ For democrats, the processing advantage for male pronoun over female is similar 
 whereas for independents and Republicans, the bias is pronounced only when the maze task came before event estimation.
 
 And broken down by participant reported preference
-```{r}
+```{r fig.height=6}
 participants |>
   select(workerid, prefer) |>
   inner_join(maze, join_by(workerid)) |>
@@ -348,16 +366,16 @@ participants |>
   geom_smooth(method = "lm") +
   # geom_point(alpha=0.25) +
   scale_color_pronouns +
-  facet_grid(condition ~ .) +
+  # facet_grid(condition ~ .) +
   labs(
     title = "Maze RT on pronouns, plotted against probability of female president",
-    x = "belief that president will be Harris", y = "Maze RT (log scale)"
+    x = "age", y = "Maze RT (log scale)"
   )
 ```
 
 ----
 
-```{r}
+```{r fig.height=12}
 maze |>
   mutate(
     full_type = type, full_item = item,
@@ -434,7 +452,7 @@ p_spr <- (p_spr1 / p_spr2) + plot_layout(guides = "collect")
 p_spr
 ```
 
-```{r}
+```{r fig.height=4}
 spr |>
   filter(is_target) |>
   ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender))) +
@@ -511,28 +529,28 @@ p_spr_lags
 ```
 
 
-We could also try to look at the effect of event belief, but this is too low power with SPR: 
+<!-- We could also try to look at the effect of event belief, but this is too low power with SPR:  -->
 ```{r}
-# Plot Maze RT on pronouns by gender against belief that president will be female
-expectations |>
-  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
-  select(workerid, starts_with("probability")) |>
-  # left_join(demographics_and_prolific_uniq) |>
-  left_join(spr) |>
-  filter(is_target) |>
-  ggplot(aes(probability_Harris, log(rt_gmean), color = pronoun_gender)) +
-  geom_smooth(method = "lm") +
-  # geom_point(alpha=0.25) +
-  labs(
-    title = "SPR RT on pronouns, plotted against probability of female president",
-    x = "belief that president will be Harris", y = "Maze RT"
-  )
+# # Plot Maze RT on pronouns by gender against belief that president will be female
+# expectations |>
+#   pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+#   select(workerid, starts_with("probability")) |>
+#   # left_join(demographics_and_prolific_uniq) |>
+#   left_join(spr) |>
+#   filter(is_target) |>
+#   ggplot(aes(probability_Harris, log(rt_gmean), color = pronoun_gender)) +
+#   geom_smooth(method = "lm") +
+#   # geom_point(alpha=0.25) +
+#   labs(
+#     title = "SPR RT on pronouns, plotted against probability of female president",
+#     x = "belief that president will be Harris", y = "Maze RT"
+#   )
 ```
-Yet given that we can see it plausibly in the Maze data, we don't necessarily need this.
 
 
-SPR averages broken down by participant gender
-```{r}
+
+
+```{r fig.height=4}
 participants |>
   select(workerid, gender) |>
   inner_join(spr, join_by(workerid)) |>
@@ -547,8 +565,9 @@ participants |>
   )
 ```
 
-SPR averages broken down by participant gender
-```{r}
+^ SPR averages broken down by participant gender
+
+```{r fig.height=6}
 participants |>
   select(workerid, political_aff) |>
   inner_join(spr, join_by(workerid)) |>
@@ -562,10 +581,10 @@ participants |>
     color = "pronoun gender", subtitle = "overall"
   )
 ```
-
+^ SPR averages broken down by participant political affiliation
 ----
 
-```{r}
+```{r fig.height=12}
 spr |>
   mutate(
     full_type = type, full_item = item,
