@@ -370,16 +370,16 @@ cloze <- exclude_participants(cloze_all, use_comp_q = F) |>
   left_join(conditions,join_by(workerid))
  
 # To inspect OTHER responses:
-cloze |> 
-  select(item,partial,response,response_type,everything()) |>
-  mutate(
-    partial = gsub(
-      "The next US president will be sworn into office in January 2025. ",
-      "", partial)
-  ) |>
-  arrange(partial) |>
-  filter(item==12, str_detect(response,"safety")) |>
-  print(n=Inf)
+# cloze |> 
+#   select(item,partial,response,response_type,everything()) |>
+#   mutate(
+#     partial = gsub(
+#       "The next US president will be sworn into office in January 2025. ",
+#       "", partial)
+#   ) |>
+#   arrange(partial) |>
+#   filter(item==12, str_detect(response,"safety")) |>
+#   print(n=Inf)
 
 ```
 
