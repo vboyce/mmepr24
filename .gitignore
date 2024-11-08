@@ -4,6 +4,9 @@
 .Renviron
 .Rproj.user/
 
-# Don't track sensitive data files
+# Don't track sensitive data files:
+# - Prolific recruitment info and ids
+data/prolific_*.csv
+data/prolific_*.pdf
+# - Link proliferate worker ids to prolific ids
 data/*-workerids.csv
-data/prolific_export_*.csv
