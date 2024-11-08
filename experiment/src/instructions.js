@@ -9,7 +9,7 @@ export const CONSENT =
 
 export const EVENT_INST =
   "<h2>Who do you think will be <br> the US president in February 2025?</h2>" +
-  "<p>Use the sliders below to indicate each candidate's chance of winning the election.</p>";
+  "<p>Use the sliders below to indicate each candidate's chance.</p>";
 
 export const CLOZE_INST =
   "<h4>Below is a fragment of a sentence.  " +
