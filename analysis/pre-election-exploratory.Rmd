@@ -49,13 +49,13 @@ scale_color_pronouns <- scale_color_manual(
   breaks = names(pronoun_colors)
 )
 
-recall_question <- read_csv(here("data/processed/recall_question.csv"))
-expectations <- read_csv(here("data/processed/expectations.csv")) |>
+recall_question <- read_csv(here("data/processed/pre_recall_question.csv"))
+expectations <- read_csv(here("data/processed/pre_expectations.csv")) |>
   mutate(
     candidate = recode(candidate, harris = "Harris", trump = "Trump"),
     candidate = factor(candidate, levels = c("Harris", "Trump", "other"))
   )
-cloze <- read_csv(here("data/processed/cloze.csv")) |> mutate(
+cloze <- read_csv(here("data/processed/pre_cloze.csv")) |> mutate(
   response_type = factor(response_type,
     levels = c(
       "Harris", "pronoun female", "Trump", "pronoun male",
@@ -63,18 +63,18 @@ cloze <- read_csv(here("data/processed/cloze.csv")) |> mutate(
     )
   )
 )
-spr <- read_csv(here("data/processed/spr.csv")) |> # RTs are residualized
+spr <- read_csv(here("data/processed/pre_spr.csv")) |> # RTs are residualized
   mutate(
     nth_pronoun = factor(case_when(is_pron1 ~ 1, is_pron2 ~ 2, .default = NA)),
     pronoun_gender = factor(case_when(is_pron1 ~ type1, is_pron2 ~ type2, .default = NA))
   )
-# spr_all <- read_csv(here("data/processed/spr_all.csv"))
-maze <- read_csv(here("data/processed/maze.csv")) |> # Maze RTs are not residualized
+# spr_all <- read_csv(here("data/processed/pre_spr_all.csv"))
+maze <- read_csv(here("data/processed/pre_maze.csv")) |> # Maze RTs are not residualized
   mutate(
     nth_pronoun = factor(case_when(is_pron1 ~ 1, is_pron2 ~ 2, .default = NA)),
     pronoun_gender = factor(case_when(is_pron1 ~ type1, is_pron2 ~ type2, .default = NA))
   )
-participants <- read_csv(here("data/processed/participants.csv"))
+participants <- read_csv(here("data/processed/pre_participants.csv"))
 ```
 
 ```{r}
@@ -96,7 +96,7 @@ Check that we got a rough balance in event probability responses for the two can
 #   labs(y='candidate',title="responded probability of being next president") +
 #   geom_boxplot(draw_quantiles=c(.5))
 
-expectations |>
+expectations |> mutate(order=if_else(str_starts(condition, "event"), "event-trial", "trial-event")) |>
   ggplot(aes(probability, candidate, color = candidate)) +
   labs(
     y = NULL,
@@ -104,7 +104,8 @@ expectations |>
     subtitle = "responses normalized per participant"
   ) +
   scale_color_manual(values = candidate_colors) +
-  # facet_grid(~condition) +
+  geom_violin(draw_quantiles = .5, alpha=0.5) +
+  facet_grid(order~.) +
   geom_jitter(size = 0.5, alpha = 0.5, color = "gray") +
   stat_summary(fun.data = "mean_se", geom = "pointrange")
 ```
@@ -112,10 +113,10 @@ expectations |>
 Looking for order effects, (combining all orders that start with "event" to one, for this plot, since all are identical wrt this data)
 ```{r fig.height=6}
 expectations |>
-  mutate(condition = case_when(
-    condition |> str_starts("event-") ~ "event-[cloze/maze/spr]",
-    .default = condition
-  )) |>
+  mutate(condition = factor(case_when(
+    condition |> str_starts("event-") ~ "first",
+    .default = paste("after", str_replace(condition, "-event", ""))
+  ))|> fct_relevel("first")) |>
   ggplot(aes(probability, candidate, color = candidate)) +
   labs(
     y = NULL,
@@ -153,7 +154,7 @@ cloze_categorized |>
   ggplot(aes(category, fill = response_type)) +
   geom_bar() +
   geom_text(stat = "count", aes(label = ..count..), color = "white", position = position_stack(vjust = 0.5)) +
-  facet_wrap(~condition, scales = "free") +
+  facet_wrap(~condition, scales = "free_y") +
   scale_fill_response_types +
   labs(title = "Type of cloze responses, faceted by order") +
   theme(legend.position = "top", legend.direction = "horizontal")
@@ -164,7 +165,10 @@ _But it seems the difference between orders here is actually not significant, pe
 ```{r fig.width = 5, fig.height = 5, out.width="50%"}
 # remotes::install_github("tmalsburg/binomialCRIs")
 if (require("binomialCRIs")) {
-  F_pre <- 21; M_pre <- 28;  F_post <- 7; M_post <- 16
+  F_pre <- nrow(filter(cloze, condition=="cloze-event", response_type=="pronoun female"))
+  M_pre <- nrow(filter(cloze, condition=="cloze-event", response_type=="pronoun male"))
+  F_post <- nrow(filter(cloze, condition=="event-cloze", response_type=="pronoun female"))
+  M_post <- nrow(filter(cloze, condition=="event-cloze", response_type=="pronoun male"))
   plot_binomial_hpdi(
     n_successes = F_pre, n_trials = F_pre + M_pre,
     prob = 0.95
@@ -178,7 +182,6 @@ if (require("binomialCRIs")) {
       )
     )
 }
-
 ```
 
 Breaking down further by gender:
@@ -195,7 +198,7 @@ cloze |>
   ggplot(aes(category, fill = response_type)) +
   geom_bar() +
   geom_text(stat = "count", aes(label = ..count..), color = "white", position = position_stack(vjust = 0.5)) +
-  facet_wrap(gender ~ condition, scales = "free") +
+  facet_wrap(gender ~ condition, scales = "free_y") +
   scale_fill_response_types +
   labs(title = "Type of cloze responses, faceted by order and gender") +
   theme(legend.position = "top", legend.direction = "horizontal")
@@ -368,7 +371,7 @@ participants |>
   scale_color_pronouns +
   # facet_grid(condition ~ .) +
   labs(
-    title = "Maze RT on pronouns, plotted against probability of female president",
+    title = "Maze RT on pronouns, plotted against participant age",
     x = "age", y = "Maze RT (log scale)"
   )
 ```
@@ -386,7 +389,8 @@ maze |>
   filter(
     correct,
     # Filter to not get effects from switching pronouns midstream
-    type1==type2
+    # (only use first sentence)
+    in_s == 1
   ) |>
   select(-c(type1, type2, item1, item2)) |>
   summarize(
@@ -446,7 +450,8 @@ p_spr2 <- spr |>
   scale_color_pronouns +
   labs(
     title = "SPR RT on pronouns by  stimulus type", color = "pronoun gender",
-    subtitle = "(RTs averaged across 4-word window for spillover)\n(gender of pronoun in each of two sentences read back to back)"
+    subtitle = "(RTs averaged across 4-word window for spillover)\n(gender of pronoun in each of two sentences read back to back)",
+    y = "log residualized RT"
   )
 p_spr <- (p_spr1 / p_spr2) + plot_layout(guides = "collect")
 p_spr
