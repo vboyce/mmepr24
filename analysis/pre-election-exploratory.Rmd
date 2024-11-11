@@ -11,7 +11,7 @@ output:
 # Exploratory data analysis plotting
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = TRUE)
 knitr::opts_chunk$set(dev = "png", dev.args = list(type = "cairo-png"))
 knitr::opts_chunk$set(fig.width = 12, fig.height = 8)
 options(knitr.table.format = "html")
@@ -49,13 +49,22 @@ scale_color_pronouns <- scale_color_manual(
   breaks = names(pronoun_colors)
 )
 
-recall_question <- read_csv(here("data/processed/pre_recall_question.csv"))
-expectations <- read_csv(here("data/processed/pre_expectations.csv")) |>
+recall_question <- read_csv(
+  here("data/processed/pre_recall_question.csv"),
+  show_col_types = FALSE
+)
+expectations <- read_csv(
+  here("data/processed/pre_expectations.csv"),
+  show_col_types = FALSE
+) |>
   mutate(
     candidate = recode(candidate, harris = "Harris", trump = "Trump"),
     candidate = factor(candidate, levels = c("Harris", "Trump", "other"))
   )
-cloze <- read_csv(here("data/processed/pre_cloze.csv")) |> mutate(
+cloze <- read_csv(
+  here("data/processed/pre_cloze.csv"),
+  show_col_types = FALSE
+) |> mutate(
   response_type = factor(response_type,
     levels = c(
       "Harris", "pronoun female", "Trump", "pronoun male",
@@ -63,18 +72,27 @@ cloze <- read_csv(here("data/processed/pre_cloze.csv")) |> mutate(
     )
   )
 )
-spr <- read_csv(here("data/processed/pre_spr.csv")) |> # RTs are residualized
+spr <- read_csv(
+  here("data/processed/pre_spr.csv"),
+  show_col_types = FALSE
+) |> # RTs are residualized
   mutate(
     nth_pronoun = factor(case_when(is_pron1 ~ 1, is_pron2 ~ 2, .default = NA)),
     pronoun_gender = factor(case_when(is_pron1 ~ type1, is_pron2 ~ type2, .default = NA))
   )
 # spr_all <- read_csv(here("data/processed/pre_spr_all.csv"))
-maze <- read_csv(here("data/processed/pre_maze.csv")) |> # Maze RTs are not residualized
+maze <- read_csv(
+  here("data/processed/pre_maze.csv"),
+  show_col_types = FALSE
+) |>
   mutate(
     nth_pronoun = factor(case_when(is_pron1 ~ 1, is_pron2 ~ 2, .default = NA)),
     pronoun_gender = factor(case_when(is_pron1 ~ type1, is_pron2 ~ type2, .default = NA))
   )
-participants <- read_csv(here("data/processed/pre_participants.csv"))
+participants <- read_csv(
+  here("data/processed/pre_participants.csv"),
+  show_col_types = FALSE
+)
 ```
 
 ```{r}
@@ -90,13 +108,16 @@ message("                       total: ", np_cloze + np_maze + np_spr)
 ## Expectations
 
 Check that we got a rough balance in event probability responses for the two candidates (given the uncertainty in polling and prediction markets, we should expect respondents to reflect this).
-```{r fig.height=4}
+```{r fig.height=7}
 # expectations |>
 #   ggplot(aes(response,topic)) +
 #   labs(y='candidate',title="responded probability of being next president") +
 #   geom_boxplot(draw_quantiles=c(.5))
 
-expectations |> mutate(order=if_else(str_starts(condition, "event"), "event-trial", "trial-event")) |>
+expectations |>
+  mutate(order = if_else(
+    str_starts(condition, "event"), "event-trial", "trial-event"
+  )) |>
   ggplot(aes(probability, candidate, color = candidate)) +
   labs(
     y = NULL,
@@ -104,8 +125,8 @@ expectations |> mutate(order=if_else(str_starts(condition, "event"), "event-tria
     subtitle = "responses normalized per participant"
   ) +
   scale_color_manual(values = candidate_colors) +
-  geom_violin(draw_quantiles = .5, alpha=0.5) +
-  facet_grid(order~.) +
+  geom_violin(draw_quantiles = .5, alpha = 0.5) +
+  facet_grid(order ~ .) +
   geom_jitter(size = 0.5, alpha = 0.5, color = "gray") +
   stat_summary(fun.data = "mean_se", geom = "pointrange")
 ```
@@ -237,7 +258,7 @@ cloze |> # filter(response_type!="OTHER") |>
 ## Maze
 Look at average Maze RT by gender of pronoun, and for each condition of two sentences presented.
 Shows an effect of gender (male pronoun is read faster than female, neutral is perhaps even faster than male).
-These Maze RTs are not residualized. But could be for slightly smaller std error probably.
+These Maze RTs are residualized as with the SPR (control for participant mean reading speed and eg word length, punctuation, and by item effects).
 ```{r}
 # maze |>
 #   count(item1, item2, type, type1, type2) |>
@@ -421,7 +442,6 @@ Likewise look at average SPR RT by gender of pronoun, and for each condition of 
 These RTs are residualized.
 Results look similar to Maze RTs, but are less pronounced/lower power.
 
-Still, I think high enough power that we don't need to run further trials.
 
 ```{r}
 # spr |>
@@ -599,7 +619,7 @@ spr |>
   ) |>
   filter(
     # Filter to not get effects from switching pronouns midstream
-    type1==type2
+    in_s == 1
   ) |>
   select(-c(type1, type2, item1, item2)) |>
   summarize(

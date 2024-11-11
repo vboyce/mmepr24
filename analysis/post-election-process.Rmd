@@ -1,0 +1,614 @@
+---
+title: "Process post-election data"
+output:
+  pdf_document:
+    toc: true
+  html_document:
+    toc: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = T)
+knitr::opts_chunk$set(dev = "png", dev.args = list(type = "cairo-png"))
+options(knitr.table.format = "html")
+knitr::opts_chunk$set(echo = F)
+library(tidyverse)
+library(viridis)
+library(here)
+library(ggthemes)
+library(knitr)
+library(jsonlite)
+
+theme_set(theme_bw())
+
+trials_loc <- "data/mme_post_election-trials.csv"
+
+# These two files contain prolific IDs,
+# which should not be shared publicly, so aren't in the public repo.
+# The processed data files output at the end of this notebook are safe.
+workerids_loc <- "data/mme_post_election-workerids.csv"
+prolific_demog_loc <- "data/prolific_export_672e395849eebe24bbd6ec5f.csv"
+
+cloze_stim_loc <- "experiment/exported_cloze_stim.csv"
+comp_q_loc <- "experiment/exported_comp_q.csv"
+maze_stim_loc <- "experiment/exported_maze_stim.csv"
+
+ParseJSONColumn <- function(x) {
+  str_replace_all(x, c(
+    "'" = '"',
+    'I"d' = "I'd",
+    '([A-Za-z]+)n"t' = "\\1n't",
+    '([A-Za-z]+)"s' = "\\1's",
+    'States" ' = "States' ",
+    ' "([A-Za-z]+)" ' = " `\\1` ", # replace quotes to avoid some issues
+    ": None" = ': "NA"' # don't replace "None" when it's a string
+  )) |> fromJSON(flatten = TRUE)
+}
+
+side_msg <- \(df, msg, fn) {
+  message(msg, fn(df))
+  df
+}
+```
+
+## Read in data
+
+```{r}
+# Read in raw data exported from proliferate
+raw <- read_csv(here(trials_loc)) |>
+  select(-proliferate.condition) |>
+  filter(!is.na(condition))
+
+# Read in stimuli as exported locally from experiment
+cloze_stim <- read_csv(here(cloze_stim_loc))
+comp_qa <- read_csv(here(comp_q_loc))
+sprmaze_stim <- read_csv(here(maze_stim_loc))
+
+# Read in workerids data exported from proliferate
+workerids <- read_csv(here(workerids_loc)) |>
+  rename(prolific_id = prolific_participant_id)
+# Read in prolific demographic info exported from Prolific
+prolific_demog_raw <- read_csv(here(prolific_demog_loc)) |>
+  rename(prolific_id = `Participant id`) |>
+  mutate(Age = if_else(Age == "CONSENT_REVOKED", NA, Age))
+
+expectations_all <- raw |>
+  filter(trial_type == "survey-slider") |>
+  select(workerid, condition, response) |>
+  mutate(response = map(response, ParseJSONColumn)) |>
+  unnest_longer(response, indices_to = "candidate") |>
+  mutate(
+    response = as.numeric(response),
+    candidate = factor(candidate, levels = c("harris", "trump", "other"))
+  ) |>
+  mutate(.by = workerid, probability = response / sum(as.numeric(response)))
+
+cloze_all <- raw |>
+  filter(trial_type == "cloze") |>
+  select(workerid, item, response) |>
+  mutate(response = map(response, ParseJSONColumn), item = as.numeric(item)) |>
+  unnest(response) |>
+  left_join(cloze_stim, join_by(item))
+
+spr_all <- raw |>
+  filter(trial_type == "spr") |>
+  select(workerid, item, type, rt, text = sentence) |>
+  mutate(word = str_split(text, " "), rt = map(rt, ParseJSONColumn)) |>
+  rowwise() |>
+  mutate(rt = list(rt[-1])) |>
+  ungroup() |>
+  unnest(c(word, rt)) |>
+  mutate(.by = c(workerid, item, text), word_number = row_number()) |>
+  separate(item, into = c("item1", "item2"), sep = "-", remove = F, convert = T) |>
+  separate(type, into = c("type1", "type2"), sep = "-", remove = F)
+
+is_pronoun <- function(word) {
+  pronouns <- c("she", "her", "hers", "he", "him", "his", "they", "them", "their", "theirs")
+  clean_word <- gsub("^[[:punct:]]+|[[:punct:]]+$", "", word)
+  tolower(clean_word) %in% pronouns
+}
+
+# Add in the individual sentences used as stimuli
+sprmaze_stim <- sprmaze_stim |>
+  mutate(.by = c(item, sentence), s_len = str_count(sentence, "\\S+")) |>
+  mutate(words = str_split(sentence, " "),
+    # Note in items 3 and 11 there is a second pronoun, but not
+    # referring to the president.
+    pron_pos_s = map_int(words, ~ which(is_pronoun(.x))[1])
+  ) |> select(-words)
+
+spr_all$s0 <- filter(sprmaze_stim, item == "start")$sentence[[1]]
+s0_len <- filter(sprmaze_stim, item == "start")$s_len[[1]]
+sprmaze_stim_s12 <- mutate(
+  filter(sprmaze_stim |> select(-distractor), item != "start"),
+  item = as.numeric(item)
+)
+spr_all <- spr_all |>
+  left_join(sprmaze_stim_s12, join_by(item1 == item, type1 == type)) |>
+  rename(s1 = sentence, s1_len = s_len, pron_pos_s1 = pron_pos_s) |>
+  left_join(sprmaze_stim_s12, join_by(item2 == item, type2 == type)) |>
+  rename(s2 = sentence, s2_len = s_len, pron_pos_s2 = pron_pos_s) |>
+  mutate(
+    is_pron1 = word_number == (s0_len + pron_pos_s1),
+    is_pron2 = word_number == (s0_len + s1_len + pron_pos_s2),
+    is_target = is_pron1 | is_pron2,
+    is_first_in_sent = word_number == 1 |
+      word_number == s0_len + 1 |
+      word_number == s0_len + s1_len + 1,
+    word_number_in_s = case_when(
+      word_number <= s0_len ~ word_number,
+      word_number <= s0_len + s1_len ~ word_number - s0_len,
+      .default = word_number - s0_len - s1_len
+    ),
+    in_s = case_when(
+      word_number <= s0_len ~ 0,
+      word_number <= s0_len + s1_len ~ 1,
+      .default = 2
+    )
+  )
+
+maze_all <- raw |>
+  filter(trial_type == "maze") |>
+  select(workerid, item, type, rt, correct, text = sentence, word = words, distractor = distractors) |>
+  mutate(
+    rt = map(rt, ParseJSONColumn),
+    correct = map(correct, ParseJSONColumn),
+    word = map(word, ParseJSONColumn),
+    distractor = map(distractor, ParseJSONColumn)
+  ) |>
+  unnest(c(rt, correct, word, distractor)) |>
+  mutate(correct = case_when(
+    correct == 0 ~ FALSE, correct == 1 ~ TRUE,
+    .default = NA
+  )) |>
+  mutate(.by = c(workerid, item, text), word_number = row_number()) |>
+  separate(item, into = c("item1", "item2"), sep = "-", remove = F, convert = T) |>
+  separate(type, into = c("type1", "type2"), sep = "-", remove = F)
+
+maze_all$s0 <- filter(sprmaze_stim, item == "start")$sentence[[1]]
+maze_all <- maze_all |>
+  left_join(sprmaze_stim_s12, join_by(item1 == item, type1 == type)) |>
+  rename(s1 = sentence, s1_len = s_len, pron_pos_s1 = pron_pos_s) |>
+  left_join(sprmaze_stim_s12, join_by(item2 == item, type2 == type)) |>
+  rename(s2 = sentence, s2_len = s_len, pron_pos_s2 = pron_pos_s) |>
+  mutate(
+    is_pron1 = word_number == (s0_len + pron_pos_s1),
+    is_pron2 = word_number == (s0_len + s1_len + pron_pos_s2),
+    is_target = is_pron1 | is_pron2,
+    is_first_in_sent = word_number == 1 |
+      word_number == s0_len + 1 |
+      word_number == s0_len + s1_len + 1,
+    word_number_in_s = case_when(
+      word_number <= s0_len ~ word_number,
+      word_number <= s0_len + s1_len ~ word_number - s0_len,
+      .default = word_number - s0_len - s1_len
+    ),
+    in_s = case_when(
+      word_number <= s0_len ~ 0,
+      word_number <= s0_len + s1_len ~ 1,
+      .default = 2
+    )
+  )
+
+recall_question_all <- raw |>
+  filter(trial_type == "html-button-response" & !is.na(recall_order)) |>
+  select(workerid, response, stimulus, recall_order) |>
+  mutate(recall_order = map(recall_order, ParseJSONColumn)) |>
+  rowwise() |>
+  mutate(response = recall_order[as.numeric(response) + 1]) |>
+  select(-recall_order)
+
+comp_q <- raw |>
+  filter(trial_type == "html-button-response" & !is.na(item)) |>
+  select(workerid, item, response) |>
+  # note that 0 means the first item in the list which was Yes
+  mutate(
+    response = case_when(
+      response == "0" ~ "Yes", response == "1" ~ "No",
+      .default = response
+    ),
+    item = as.numeric(item)
+  ) |>
+  # join in correct answers to questions
+  left_join(comp_qa, join_by(item)) |>
+  mutate(is_correct = tolower(response) == tolower(a))
+```
+
+# Demographics and participant exclusion
+Combine demographic info from Prolific and collected via survey
+```{r}
+# Comprehension questions
+# Proportion correct:
+cat("comp_q proportion correct:", mean(comp_q$is_correct))
+# By item:
+comp_q |>
+  group_by(item, q, a) |>
+  summarize(prop_correct = mean(is_correct))
+comp_q_correct_workerids <- unique(filter(comp_q, is_correct)$workerid)
+
+completion_code_correct_workerids <- prolific_demog_raw |>
+  filter(`Completion code` == "COHS0MZY") |>
+  left_join(workerids) |> drop_na(workerid) |> pull(workerid)
+
+demographics <- raw |>
+  filter(trial_type == "survey") |>
+  select(workerid, condition, response) |>
+  mutate(response = map(response, ParseJSONColumn)) |>
+  unnest_longer(response, indices_to = "topic") |>
+  mutate(response = ifelse(response == "NA", NA, response)) |>
+  # Ad hoc fixes: (second not needed for post-election data. fixed.)
+  # 1. fix an apparent typo
+  mutate(topic = ifelse(topic == "poltical_aff", "political_aff", topic)) |>
+  # 2. Fix an error here. Political affil. was labeled in topic='news' for some particips
+  #    Coalesce into "political_aff" if the answer was from that choice list
+  # mutate(topic = ifelse(
+  #   topic == "news" & !(response %in% c("Daily", "Weekly", "Monthly", "Less than monthly", "Never")),
+  #   "TEMP",
+  #   topic
+  # )) |>
+  pivot_wider(names_from = "topic", values_from = "response") |>
+  # mutate(political_aff = coalesce(political_aff, TEMP)) |>
+  # select(-TEMP) |>
+  mutate(age_bin = factor(case_when(
+    age < 18 ~ "<18",
+    age >= 18 & age <= 24 ~ "18-24", 
+    age >= 25 & age <= 34 ~ "25-34",
+    age >= 35 & age <= 44 ~ "35-44",
+    age >= 45 & age <= 54 ~ "45-54",
+    age >= 55 & age <= 64 ~ "55-64",
+    age >= 65 ~ "≥65"
+  ), levels = c("<18", "18-24", "25-34", "35-44", "45-54", "55-64", "≥65")))
+
+demographics |> drop_na(age) |>
+  ggplot(aes(as.numeric(age),fill = age_bin)) +
+  geom_histogram(binwidth = 1)
+
+### CHECK for many-many relations between workerids and prolific_ids
+# look for any workerids that have multiple associated responses
+str_tail <- function(s, n = 15) paste0("...", substr(s, nchar(s) - n, nchar(s)))
+workerids_many_from <- demographics |>
+  group_by(workerid) |>
+  filter(n() > 1) |>
+  pull(workerid) |>
+  unique() |>
+  union(
+    workerids |>
+      summarize(.by = workerid, distinct = n_distinct(prolific_id)) |>
+      filter(distinct > 1) |>
+      pull(workerid)
+  )
+if (length(workerids_many_from) > 0) {
+  warning(
+    length(workerids_many_from),
+    " proliferate workerids are associated with multiple runs.",
+    " Will exclude."
+  )
+  workerids |>
+    filter(workerid %in% workerids_many_from) |>
+    summarize(paste(str_tail(prolific_id), collapse = ", "), .by = workerid)
+}
+
+# look for any prolific_ids that have multiple associated workerids
+prolificids_many_from <- workerids |>
+  group_by(prolific_id) |>
+  filter(n() > 1) |>
+  pull(prolific_id) |>
+  unique()
+if (length(prolificids_many_from) > 0) {
+  warning(
+    length(prolificids_many_from),
+    " prolific_ids are associated with multiple proliferate workerids.",
+    " Will exclude."
+  )
+  workerids |>
+    filter(prolific_id %in% prolificids_many_from) |>
+    summarize(paste(workerid, collapse = ", "), .by = (prolific_id)) |>
+    mutate(prolific_id = str_tail(prolific_id))
+}
+```
+
+```{r}
+## Exclude any participants in any many-to-many
+## relations between workerids and prolific_ids
+demographics_and_prolific_uniq <- demographics |>
+  filter(!(workerid %in% workerids_many_from)) |>
+  left_join(workerids, join_by(workerid)) |>
+  filter(!(prolific_id %in% prolificids_many_from)) |>
+  left_join(prolific_demog_raw, join_by(prolific_id))
+
+included_participants <- demographics_and_prolific_uniq |>
+  side_msg("Participant exclusion. Initial: ", nrow) |>
+  filter(residence == "Yes", citizen == "Yes", english == "Yes") |>
+  side_msg("After screening criteria: ", nrow) |>
+  # filter(workerid %in% completion_code_correct_workerids) |>
+  # side_msg("After completion code check: ", nrow) |>
+  select(workerid, prolific_id) |> distinct() |>
+  side_msg("After removing duplicates: ", nrow)
+
+exclude_participants <- function(df, use_comp_q = T) {
+  participants <- if (use_comp_q) {
+    filter(included_participants, workerid %in% comp_q_correct_workerids)
+  } else {
+    included_participants
+  }
+  filter(df, workerid %in% participants$workerid)
+}
+
+timezone <- "America/New_York"
+demographics_and_prolific_uniq |> 
+  drop_na(`Started at`) |>
+  mutate(
+    across(
+      c(`Started at`, `Completed at`),
+      ~ with_tz(., timezone)
+    ),
+    workerid = fct_reorder(factor(workerid), `Started at`),
+    included = workerid %in% included_participants$workerid
+  ) |>
+  filter(included) |>
+  ggplot(aes(y=workerid,x = `Started at`, color=age_bin)) +
+  geom_segment(
+    aes(xend = `Completed at`, yend = workerid), alpha = 0.5
+  ) +
+  geom_point(alpha = 0.2) +
+  labs(
+    x = str_glue("Time ({timezone})"),
+    title = "Experiment Completion Timeline",
+    subtitle = str_glue("Start: {format(min(demographics_and_prolific_uniq$`Started at`,na.rm=T)|>with_tz(timezone), '%H:%M, %B %d, %Y')}") # nolint: line_length_linter.
+  ) + theme_minimal() +
+  # facet_grid(age_bin ~ ., scales = "free",space = "free") +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank()
+  )
+```
+
+```{r}
+# We can use the demographics from the survey where they don't agree
+# with demographics from prolific.  But just to check how much they disagree:
+compare_demographics <- function(
+  Col1, Col2, data = demographics_and_prolific_uniq
+) {
+  not_matched <- filter(data, {{ Col1 }} != {{ Col2 }})
+  pct_matched <- nrow(not_matched) / nrow(data) * 100
+  if (nrow(not_matched) > 0) {
+    message(sprintf("%.2f%% of values don't match.", pct_matched))
+    print(data |> count({{ Col1 }} == {{ Col2 }}))
+  } else {
+    message("Fully matched.")
+  }
+  not_matched |> select(workerid, {{ Col1 }}, {{ Col2 }})
+}
+# Some places where demographics reported in survey
+# in experiment don't match those from prolific
+if (FALSE) {
+  compare_demographics(political_aff, `U.s. political affiliation`)
+  compare_demographics(age, Age)
+  compare_demographics(gender, Sex)
+}
+```
+
+```{r}
+
+# Expectations
+expectations <- exclude_participants(expectations_all, use_comp_q = F)
+# Conditions
+conditions <- expectations |> select(workerid,condition) |> distinct()
+# check
+if (
+  0 != conditions |>
+    summarize(.by = workerid,
+      n = n_distinct(condition), paste(condition, collapse = " ")
+    ) |>
+    filter(n > 1) |>
+    nrow()
+) warning("Some workerids have multiple conditions.")
+# Recall questions
+recall_question <- exclude_participants(recall_question_all) |>
+  left_join(conditions,join_by(workerid))
+# Cloze
+cloze <- exclude_participants(cloze_all, use_comp_q = FALSE) |>
+  ## Map to different response types
+  # (preliminary step; to be hand inspected and corrected afterward)
+  mutate(
+    response_type = case_when(
+      str_detect(response, "(?i)\\b(he or she|she or he|she/he|he/she)\\b") ~
+        "hedged",
+      str_detect(response, "(?i)\\b(she|her|hers)\\b") ~
+        "pronoun female",
+      str_detect(response, "(?i)\\b(he|his|him)\\b") ~
+        "pronoun male",
+      !(str_ends(partial, "challenges, and one of") &
+          str_detect(trimws(response), "(?i)^(them)\\b")) &
+        str_detect(response, "(?i)\\b(they|their|them)\\b") ~
+        "pronoun neutral",
+      str_detect(response, "(?i)\\b(trump|donald|president trump|president don)") ~
+        "Trump",
+      str_detect(response, "(?i)\\b(harris|kamala|president harris|president kamala|the first black)") ~
+        "Harris",
+      str_detect(response, "(?i)\\b(((the|next|u.s.|u.s|us|new(.*)) (president|potus))|the candidate)") ~
+        "ambiguous NP",
+      TRUE ~ "OTHER"
+    )
+  ) |> # Manual edits after some hand inspection
+  mutate(response_type = case_when(
+    # used uncaught animate noun phrase to refer to president ambiguously
+    workerid %in% c(1676, 2291) & item == 12 ~ "ambiguous NP",
+    TRUE ~ response_type
+  )) |>
+  select(workerid, item, response, response_type, everything()) |>
+  left_join(conditions,join_by(workerid))
+
+if (FALSE) {
+  # To inspect OTHER responses:
+  cloze |>
+    select(item, partial, response_type, response, everything()) |>
+    mutate(
+      partial = gsub(
+        "The next US president will be sworn into office in January 2025. ",
+        "", partial
+      )
+    ) |>
+    arrange(response_type,partial) |> #write_excel_csv("TEMP.csv")
+    # filter(item == 12, str_detect(response, "safety")) |>
+    print(n = Inf) |> View()
+}
+```
+
+```{r}
+# SPR
+spr <- exclude_participants(spr_all) |>
+  mutate(included_rt = rt > 180 & rt < 5000) |>
+  left_join(conditions,join_by(workerid))
+
+message(
+  "SPR: Proportion RTs excluded for being unreasonably fast or slow:  ",
+  format(100-100*nrow(filter(spr,included_rt))/nrow(spr_all), digits=2), "%."
+)
+
+gmean <- function(x) exp(mean(log(x)))
+spr <- spr |> # include rts for next three words
+  mutate(
+    .by = c(workerid, item, text),
+    across(
+      c(rt, included_rt, word),
+      list("1next" = ~ lead(.x, 1L),
+           "2next" = ~ lead(.x, 2L),
+           "3next" = ~ lead(.x, 3L))
+    )
+  ) |>
+  filter(if_all(starts_with("included_rt"))) |>
+  rowwise() |>
+  mutate(
+    rt_gmean = gmean(c_across(matches("^rt$|^rt_(.)next$"))),
+  ) |>
+  ungroup() |>
+  select(-starts_with("included_rt"))
+
+
+# Residualize SPR RTs
+# Following von der Malsburg et al 2016
+
+spr_mean_rts <- spr |>
+  filter(word_number < pron_pos_s1) |>
+  group_by(workerid) |>
+  summarize(gmean_rt = gmean(rt))
+
+spr <- spr |>
+  mutate(
+    nchar  = nchar(gsub("^[[:punct:]]+|[[:punct:]]+$", "", trimws(word))),
+    comma  = grepl(",", word),
+    period = grepl("[.]", word)
+  ) |>
+  inner_join(spr_mean_rts)
+
+m <- lme4::lmer(
+  log(rt) ~ 1 + (
+    scale(log(gmean_rt)) + scale(word_number) + scale(nchar) +
+      is_first_in_sent + comma + period
+  )^2 + # Include main effects and all 2-way interactions
+    (1 | item),
+  spr
+)
+summary(m)
+
+spr$rt.raw <- spr$rt
+spr$rt <- exp(residuals(m) + lme4::fixef(m)[1])
+spr <- spr |> arrange(item1, item2, type1, type2, workerid, word_number)
+
+# Maze
+maze <- exclude_participants(maze_all) |>
+  left_join(conditions, join_by(workerid))
+
+maze_errors <- maze |> 
+  summarize(.by=workerid, errors=sum(!correct)) |>
+  # Cutoff at mean+2SD number of errors
+  mutate(cutoff = floor(mean(errors) + 2*sd(errors))) |> arrange(errors)
+maze_good_workerids <- maze_errors |> filter(errors <= cutoff) |> pull(workerid)
+
+message(
+  "Removed ", 
+  format(100-100*length(maze_good_workerids)/n_distinct(maze_errors$workerid), digits=2),
+  "% of participants who had number of errors larger than cutoff value."
+)
+ggplot(maze_errors) + 
+  geom_histogram(aes(errors,fill=errors<=cutoff), binwidth = 1) +
+  geom_vline(aes(xintercept = cutoff), linetype = "dashed") +
+  labs(title = "Maze participants' number of errors")
+
+
+maze <- maze |>
+  filter(workerid %in% maze_good_workerids) |>
+  mutate(.by = workerid,
+    errors_so_far = cumsum(!correct),
+    prev_incorrect = coalesce(lag(!correct, 1L), FALSE)
+  ) |>
+  filter(correct)
+
+maze_mean_rts <- maze |>
+  filter(word_number < pron_pos_s1) |>
+  group_by(workerid) |>
+  summarize(gmean_rt = gmean(rt))
+
+maze <- maze |>
+  mutate(
+    nchar  = nchar(gsub("^[[:punct:]]+|[[:punct:]]+$", "", trimws(word))),
+    comma  = grepl(",", word),
+    period = grepl("[.]", word)
+  ) |>
+  inner_join(maze_mean_rts)
+
+m2 <- lme4::lmer(
+  log(rt) ~ 1 + (
+    scale(log(gmean_rt)) + scale(word_number) + scale(nchar) +
+      prev_incorrect +
+      is_first_in_sent + comma + period
+  )^2 + # Include main effects and all 2-way interactions
+    (1 | item),
+  maze
+)
+summary(m2)
+
+maze$rt.raw <- maze$rt
+maze$rt <- exp(residuals(m2) + lme4::fixef(m2)[1])
+maze <- maze |> arrange(item1, item2, type1, type2, workerid, word_number)
+
+```
+
+# Export
+
+```{r export}
+participants <- demographics_and_prolific_uniq |> select(-prolific_id)
+
+# Export the dataframes to CSV files
+write_csv(
+  recall_question |> mutate(batch = "post"),
+  here("data/processed/post_recall_question.csv")
+)
+write_csv(
+  expectations |> mutate(batch = "post"),
+  here("data/processed/post_expectations.csv")
+)
+write_csv(
+  cloze |> mutate(batch = "post"),
+  here("data/processed/post_cloze.csv")
+)
+write_csv(
+  spr |> mutate(batch = "post"),
+  here("data/processed/post_spr.csv")
+)
+write_csv(
+  spr_all |> mutate(batch = "post"),
+  here("data/processed/post_spr_all.csv")
+)
+write_csv(
+  maze |> mutate(batch = "post"),
+  here("data/processed/post_maze.csv")
+)
+write_csv(
+  participants |> mutate(batch = "post"),
+  here("data/processed/post_participants.csv")
+)
+```
