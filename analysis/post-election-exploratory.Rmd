@@ -573,43 +573,6 @@ participants |>
 ^ SPR averages broken down by participant political affiliation, as with Maze above.
 
 
-```{r fig.height=12}
-spr |>
-  mutate(
-    full_type = type, full_item = item,
-    s = case_when(in_s == 0 ~ s0, in_s == 1 ~ s1, in_s == 2 ~ s2),
-    type = case_when(in_s == 0 ~ NA, in_s == 1 ~ type1, in_s == 2 ~ type2),
-    item = case_when(in_s == 0 ~ 0, in_s == 1 ~ item1, in_s == 2 ~ item2),
-  ) |>
-  filter(
-    # Filter to not get effects from switching pronouns midstream
-    # (only use first sentence)
-    in_s == 1
-  ) |>
-  select(-c(type1, type2, item1, item2)) |>
-  summarize(
-    # summarize by `in_s` or `full_type` to get sentence order effect
-    .by = c(item, type, word_number_in_s, is_target, word),
-    n = n(),
-    m = mean(log(rt_gmean)),
-    se = sd(log(rt_gmean)) / sqrt(n)
-  ) |>
-  filter(item != 0) |>
-  ggplot(aes(
-    word_number_in_s,
-    m, ymin = m - 1.96 * se, ymax = m + 1.96 * se,
-    group = type, color = type
-  )) +
-  geom_line(alpha = 0.5) +
-  scale_color_pronouns + 
-  geom_pointrange(aes(size = is_target, shape = is_target), alpha = 0.5) +
-  scale_size_manual(values = c(0.5, 1)) +
-  geom_text(aes(label=word,y=-Inf), alpha=0.33, angle = 15, vjust = -1, hjust = 0.5, size = 2) +
-  facet_grid(item ~ .) +
-  labs(title="SPR", y="log RT")
-```
-
-
 ### SPR tracks on each of the target sentences:
 
 ```{r fig.height=12}
