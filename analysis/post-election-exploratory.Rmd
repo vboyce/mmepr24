@@ -206,7 +206,7 @@ if (require("binomialCRIs")) {
   ) +
     geom_vline(xintercept = F_after / (F_after + M_after)) +
     labs(
-      title = "Binomial HDPI check for order effect (in pre-election data)",
+      title = "Binomial HPDI check for order effect (in pre-election data)",
       subtitle = paste(
         "posterior for proportion fem. in cloze-event\n",
         "vertical line at proportion fem. in event-cloze"
@@ -217,27 +217,27 @@ if (require("binomialCRIs")) {
 ```
 
 ### By item cloze breakdown
-```{r}
-cloze |>  filter(response_type!="OTHER") |>
-  mutate(category = case_when(
-    response_type %in% c("Harris", "pronoun female") ~ "female",
-    response_type %in% c("Trump", "pronoun male") ~ "male",
-    response_type %in% c("hedged", "pronoun neutral", "ambiguous NP") ~ "neutral",
-    .default = "OTHER"
-  )) |>
-  mutate(partial = gsub("The next US president will be sworn into office in January 2025. ", "", partial)) |>
-  ggplot(aes(category, fill = response_type, linetype=batch)) +
-  geom_bar(position=position_dodge(), lwd=1, color="black") +
-  facet_wrap( ~ paste0(
-    sprintf("%02d", item), ":\n",
-    gsub("(.{40})", "\\1\n", partial)
-  )) +
-  scale_fill_response_types +
-  labs(
-    title = "Type of cloze responses, by item",
-    subtitle = "Looking the responses to each item separately (OTHER responses not shown)"
-  ) +
-  theme(legend.position = "top", legend.direction = "horizontal")
+```{r fig.height=14}
+plot_cloze_facet_items <- function(data, title) {
+  data |>
+    ggplot(aes(category, fill = response_type)) +
+    geom_bar() +
+    facet_wrap(~ paste0(
+      sprintf("%02d", item), ":\n",
+      gsub("(.{40})", "\\1\n", partial)
+    )) +
+    geom_text(stat = "count", aes(label = ..count..), color="white", size=2, position = position_stack(vjust = .5)) +
+    scale_fill_response_types +
+    labs(title = title)
+}
+
+p_ci1 <- plot_cloze_facet_items(cloze_categorized |>
+    filter(batch == "pre", category != "OTHER"), "pre-election")
+p_ci2 <- plot_cloze_facet_items(cloze_categorized |>
+    filter(batch == "post", category != "OTHER"), "post-election")
+
+p_ci1 / p_ci2 +
+  plot_annotation(title="Type of cloze responses, by item",subtitle = "(OTHER responses not shown)")
 ```
 
 ## Maze
@@ -259,7 +259,7 @@ p_maze1 <- maze |>
   stat_summary(position=position_dodge2(width=.5)) +
   scale_color_pronouns +
   labs(
-     y= "mean log residualized RT",
+     y= "log residualized RT",
     title = "Maze RT on pronouns by gender", 
     color = "pronoun gender", subtitle = "overall"
     )
@@ -280,7 +280,7 @@ p_maze2 <- maze |>
   facet_grid(~type, scales = "free") +
   scale_color_pronouns +
   labs(
-    x = "nth_pronoun . batch", y= "mean log residualized RT",
+    x = "nth_pronoun . batch", y= "log residualized RT",
     title = "Maze RT on pronouns by stimulus type", color = "pronoun gender",
     subtitle = "(gender of pronoun in each of two sentences read back to back)"
   )
@@ -297,7 +297,7 @@ maze |>
   stat_summary() +
   scale_color_pronouns +
   facet_grid(batch~condition, scales = "free") +
-  labs(title = "Maze RT on pronouns by gender", subtitle = "facet by order", color = "pronoun gender")
+  labs(title = "Maze RT on pronouns by gender",  y= "log residualized RT", subtitle = "facet by order", color = "pronoun gender")
 ```
 
 ^ In the pre-election data (top facets above), there may be a slightly less clear male pronoun bias for participants who 
@@ -316,7 +316,7 @@ participants |>
   scale_color_pronouns +
   labs(
     title = "SPR RT on pronouns by participant's reported candidate preference",
-    color = "pronoun gender", subtitle = "overall"
+    color = "pronoun gender", subtitle = "overall",  y= "log residualized RT"
   )
 ```
 ^ The pre-election bias is least strong among participants whose preferred candidate was Harris.
