@@ -110,6 +110,174 @@ if (length(participants_both) > 0) {
 }
 ```
 
+# Event expectation
+
+```{r fig.height=4}
+# Test whether expectations differ from 50-50 in each batch
+expectations_test <- drop_na(expectations, probability) |>
+  summarize(.by = c(batch, workerid), p = probability[candidate == "Trump"]) |>
+  summarize(.by = batch,
+    n = n(),
+    mean_prob = mean(p),
+    t_stat = t.test(p, mu = 0.5)$statistic,
+    p_value = t.test(p, mu = 0.5)$p.value,
+    ci_lower = t.test(p, mu = 0.5)$conf.int[1],
+    ci_upper = t.test(p, mu = 0.5)$conf.int[2]
+  ) 
+expectations_test |> 
+  ggplot(aes(x = mean_prob, y = batch)) +
+  geom_vline(xintercept = 0.5, linetype = "dashed", color = "gray50") +
+  geom_pointrange(aes(xmin = ci_lower, xmax = ci_upper)) +
+  labs(
+    x = "Mean expectation [Pr(Trump)]",
+    title = "Probability Trump president in Feb 2025",
+    subtitle = "For pre- and post-election batches of responses."
+  ) +
+  scale_x_continuous(labels = scales::percent) +
+  facet_grid(batch~., scales="free")
+expectations_test |>
+  knitr::kable(
+    digits = 3,
+    caption = "One-sample t-tests comparing Trump probability to 50%"
+  )
+
+```
+
+^ In the pre-election batch, mean expectations were 
+`r paste0(round(100 * expectations_test$mean_prob[expectations_test$batch=="pre"], 3), "%")`, and this was not significantly different from 50%. 
+In the post-election batch, mean expectations were 
+`r paste0(round(100 * expectations_test$mean_prob[expectations_test$batch=="post"], 3), "%")`, and this was significantly different from 50%.
+
+# Maze
+
+Pairwise comparisons between genders
+
+```{r fig.height=4}
+# Fit model with interaction
+lm_maze <- lm(
+  log(rt) ~ pronoun_gender * batch,
+  data = maze |> filter(is_target) |> 
+    mutate(batch = fct_rev(batch))
+)
+
+print_plot <- \(x, message=NULL) {
+  if (!is.null(message)) message(message); print(x); plot(x)
+}
+emmeans::emm_options(sep = " ; ") # To use as a separator in labeling factor combinations
+maze_emm <- emmeans::emmeans(lm_maze, ~ pronoun_gender : batch)
+
+maze_emm |> plot(by = "batch", comparisons = TRUE) + labs(
+  title = "Maze RT for each pronoun gender", 
+  subtitle = "overlapping arrows mean difference in means not significant at 0.05 level",
+  y = "Pronoun gender", x = "residualized log RT"
+)
+pairs(maze_emm, by = "batch", interaction = TRUE) |>
+  print_plot("Pairwise differences between genders, for each batch") +
+  geom_vline(xintercept = 0, lty = "dashed", color="gray") + 
+  labs(
+    title = "Pairwise difference in maze RT",
+    y = "Pairwise comparison between genders", x = "Difference in log RT"
+  )
+
+# This should be equivalent to doing post-hoc comparisons like this:
+# maze_models_resid <- maze |>
+#   filter(is_target) |>
+#   group_by(batch) |>
+#   group_map(~lm(log(rt) ~ pronoun_gender, .x)) |>
+#   setNames(c("pre", "post"))
+# maze_models_resid |> lapply(\(x) TukeyHSD(aov(x)))
+```
+^ Pairwise comparisons between genders show, for Maze RTs: 
+
+- in pre-election data, RT of female pronouns is larger than that of male pronouns, which in turn are slower than gender-neutral pronouns. All differences are significant at 0.05 level.
+- in post-election data, RT of female pronouns is significantly larger than that of either male or neutral pronouns respectively, and difference between male and neutral pronouns is not significant.
+
+Now, looking at interaction between each pairwise contrast, pre-vs-post election:
+```{r fig.height=4}
+# This will show if the contrasts significantly differ between pre and post
+pairs(
+  maze_emm, interaction = TRUE, 
+) |>
+  print_plot("Interaction of pairwise differences and batches") +
+  geom_vline(xintercept = 0, lty = "dashed", color="gray") + 
+  labs(
+    title = "Interaction between batch and pairwise difference in maze RT",
+    y = "Interaction", x = "Change in effect on log RT"
+  )
+```
+^  interaction between each pairwise contrast among pronouns and experiment batch (pre- vs post-election).
+
+- Comparing post-election minus pre-election
+
+  - log RT difference he-she is negative   (estimate =-0.321, p < .0001) -- that is, the bias for reading male faster than female pronouns increased.
+  - log RT difference he-they is negative but smaller  (estimate =-0.151, p = 0.0410), and likewise log RT difference she-they is positive but pretty small (etimate =0.170, p = 0.0210).
+
+
+ 
+# SPR
+
+Pairwise comparisons between genders
+
+```{r fig.height=4}
+# Fit model with interaction
+lm_spr <- lm(
+  log(rt_gmean) ~ pronoun_gender * batch,
+  data = spr |> filter(is_target) |> 
+    mutate(batch = fct_rev(batch))
+)
+
+print_plot <- \(x, message=NULL) {
+  if (!is.null(message)) message(message); print(x); plot(x)
+}
+emmeans::emm_options(sep = " ; ") # To use as a separator in labeling factor combinations
+spr_emm <- emmeans::emmeans(lm_spr, ~ pronoun_gender : batch)
+
+spr_emm |> plot(by = "batch", comparisons = TRUE) + labs(
+  title = "spr RT for each pronoun gender", 
+  subtitle = "overlapping arrows mean difference in means not significant at 0.05 level",
+  y = "Pronoun gender", x = "residualized log RT"
+)
+pairs(spr_emm, by = "batch", interaction = TRUE) |>
+  print_plot("Pairwise differences between genders, for each batch") +
+  geom_vline(xintercept = 0, lty = "dashed", color="gray") + 
+  labs(
+    title = "Pairwise difference in SPR RT",
+    y = "Pairwise comparison between genders", x = "Difference in log RT"
+  )
+```
+
+^ Pairwise comparisons between genders show, for SPR RTs: 
+
+- in pre-election data, RT of female pronouns is slightly larger than that of neutral pronouns, at 0.05 level (estimate=0.0312, p=0.0238). No other pairwise comparisons are significant.
+- in post-election data, RT of female pronouns is larger than that of either neutral or male pronouns, respectively, at 0.05 level. Comparison between male and neutral pronouns is not significant.
+
+Next, looking at interaction between each pairwise contrast, pre-vs-post election:
+```{r fig.height=4}
+# This will show if the contrasts significantly differ between pre and post
+pairs(
+  spr_emm, interaction = TRUE, 
+) |>
+  print_plot("Interaction of pairwise differences and batches") +
+  geom_vline(xintercept = 0, lty = "dashed", color="gray") + 
+  labs(
+    title = "Interaction between batch and pairwise difference in SPR RT",
+    y = "Interaction", x = "Change in effect on log RT"
+  )
+```
+^  interaction between each pairwise contrast among pronouns and experiment batch (pre- vs post-election).
+
+- Comparing post-election minus pre-election
+
+  - log RT difference he-she is negative (estimate = -0.0792, p < .0001) --- that is, the bias for reading male faster than female pronouns increased.
+  - other contrasts are not significant.
+
+
+------------------------------------------
+
+# Other exploratory plotting
+
+
+
 Number of participants per task pre- and post- election.
 ```{r}
 participants |>
