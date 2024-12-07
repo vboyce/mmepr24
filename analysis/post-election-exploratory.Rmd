@@ -83,7 +83,8 @@ spr <- read_processed("pre_spr.csv") |>
   bind_rows(read_processed("post_spr.csv")) |>
   mutate(
     nth_pronoun = factor(case_when(is_pron1 ~ 1, is_pron2 ~ 2, .default = NA)),
-    pronoun_gender = factor(case_when(is_pron1 ~ type1, is_pron2 ~ type2, .default = NA))
+    pronoun_gender = factor(case_when(is_pron1 ~ type1, is_pron2 ~ type2, .default = NA)),
+    match = type1 == type2 # whether the pronouns in the two sentences matched
   )
 
 # spr_all <- read_processed("pre_spr_all.csv") |>
@@ -93,7 +94,8 @@ maze <- read_processed("pre_maze.csv") |>
   bind_rows(read_processed("post_maze.csv")) |>
   mutate(
     nth_pronoun = factor(case_when(is_pron1 ~ 1, is_pron2 ~ 2, .default = NA)),
-    pronoun_gender = factor(case_when(is_pron1 ~ type1, is_pron2 ~ type2, .default = NA))
+    pronoun_gender = factor(case_when(is_pron1 ~ type1, is_pron2 ~ type2, .default = NA)),
+    match = type1 == type2 # whether the pronouns in the two sentences matched
   )
 
 participants <- read_processed("pre_participants.csv") |>
@@ -150,13 +152,14 @@ In the post-election batch, mean expectations were
 
 # Maze
 
-Pairwise comparisons between genders
+Pairwise comparisons between genders (first pronoun only): 
+Within each batch {pre-election, post-election}, is there a significant difference in reading times for each pairwise comparison among {male,female,neutral} pronouns?
 
 ```{r fig.height=4}
 # Fit model with interaction
 lm_maze <- lm(
   log(rt) ~ pronoun_gender * batch,
-  data = maze |> filter(is_target) |> 
+  data = maze |> filter(is_target, is_pron1) |> 
     mutate(batch = fct_rev(batch))
 )
 
@@ -166,11 +169,11 @@ print_plot <- \(x, message=NULL) {
 emmeans::emm_options(sep = " ; ") # To use as a separator in labeling factor combinations
 maze_emm <- emmeans::emmeans(lm_maze, ~ pronoun_gender : batch)
 
-maze_emm |> plot(by = "batch", comparisons = TRUE) + labs(
-  title = "Maze RT for each pronoun gender", 
-  subtitle = "overlapping arrows mean difference in means not significant at 0.05 level",
-  y = "Pronoun gender", x = "residualized log RT"
-)
+# maze_emm |> plot(by = "batch", comparisons = TRUE) + labs(
+#   title = "Maze RT for each pronoun gender",
+#   subtitle = "overlapping arrows mean difference in means not significant at 0.05 level",
+#   y = "Pronoun gender", x = "residualized log RT"
+# )
 pairs(maze_emm, by = "batch", interaction = TRUE) |>
   print_plot("Pairwise differences between genders, for each batch") +
   geom_vline(xintercept = 0, lty = "dashed", color="gray") + 
@@ -209,20 +212,49 @@ pairs(
 
 - Comparing post-election minus pre-election
 
-  - log RT difference he-she is negative   (estimate =-0.321, p < .0001) -- that is, the bias for reading male faster than female pronouns increased.
-  - log RT difference he-they is negative but smaller  (estimate =-0.151, p = 0.0410), and likewise log RT difference she-they is positive but pretty small (etimate =0.170, p = 0.0210).
+  - log RT difference he-she is negative --- that is, the bias for reading male faster than female pronouns increased.
+  - log RT difference he-they is negative but smaller, and 
+  - log RT difference she-they is positive but not significant.
 
+And looking at the second pronoun:
+```{r fig.height=4}
+# Fit model with interaction
+lm_maze2 <- lm(
+  log(rt) ~ pronoun_gender * batch * match,
+  data = maze |> filter(is_target, is_pron2) |> 
+    mutate(batch = fct_rev(batch))
+)
 
+maze_emm2 <- emmeans::emmeans(lm_maze2, ~ pronoun_gender : match : batch)
+
+# maze_emm2 |> plot(by = "batch", comparisons = TRUE) + labs(
+#   title = "Maze RT for each pronoun gender",
+#   subtitle = "overlapping arrows mean difference in means not significant at 0.05 level",
+#   y = "Pronoun gender", x = "residualized log RT"
+# )
+pairs(maze_emm2, by = c("match", "batch"), interaction = TRUE) |>
+  print_plot("Pairwise differences between genders, for each batch") +
+  geom_vline(xintercept = 0, lty = "dashed", color="gray") + 
+  labs(
+    title = "Pairwise difference in maze RT",
+    y = "Pairwise comparison between genders", x = "Difference in log RT"
+  )
+
+message("interaction with whether second pronoun matched first pronoun")
+pairs(maze_emm2, by = c("batch"), interaction = TRUE) |>
+  print()
+```
  
 # SPR
 
-Pairwise comparisons between genders
+Pairwise comparisons between genders (first pronoun only): 
+Within each batch {pre-election, post-election}, is there a significant difference in reading times for each pairwise comparison among {male,female,neutral} pronouns?
 
 ```{r fig.height=4}
 # Fit model with interaction
 lm_spr <- lm(
   log(rt_gmean) ~ pronoun_gender * batch,
-  data = spr |> filter(is_target) |> 
+  data = spr |> filter(is_target, is_pron1) |> 
     mutate(batch = fct_rev(batch))
 )
 
@@ -232,11 +264,11 @@ print_plot <- \(x, message=NULL) {
 emmeans::emm_options(sep = " ; ") # To use as a separator in labeling factor combinations
 spr_emm <- emmeans::emmeans(lm_spr, ~ pronoun_gender : batch)
 
-spr_emm |> plot(by = "batch", comparisons = TRUE) + labs(
-  title = "spr RT for each pronoun gender", 
-  subtitle = "overlapping arrows mean difference in means not significant at 0.05 level",
-  y = "Pronoun gender", x = "residualized log RT"
-)
+# spr_emm |> plot(by = "batch", comparisons = TRUE) + labs(
+#   title = "spr RT for each pronoun gender", 
+#   subtitle = "overlapping arrows mean difference in means not significant at 0.05 level",
+#   y = "Pronoun gender", x = "residualized log RT"
+# )
 pairs(spr_emm, by = "batch", interaction = TRUE) |>
   print_plot("Pairwise differences between genders, for each batch") +
   geom_vline(xintercept = 0, lty = "dashed", color="gray") + 
@@ -248,8 +280,14 @@ pairs(spr_emm, by = "batch", interaction = TRUE) |>
 
 ^ Pairwise comparisons between genders show, for SPR RTs: 
 
-- in pre-election data, RT of female pronouns is slightly larger than that of neutral pronouns, at 0.05 level (estimate=0.0312, p=0.0238). No other pairwise comparisons are significant.
-- in post-election data, RT of female pronouns is larger than that of either neutral or male pronouns, respectively, at 0.05 level. Comparison between male and neutral pronouns is not significant.
+- in pre-election data, 
+  - RT of female pronouns is slower than that of neutral pronouns (p=0.0233) and 
+  - RT of female pronouns is slower than that of male pronouns (p=0.0420). 
+  - Male-neutral comparison is not significant (p=0.5474).
+- in post-election data, 
+  - RT of female pronouns is slower than that of neutral pronouns (p=0.0180) and 
+  - RT of female pronouns is slower than that of male pronouns (p=0.0020). 
+  - Male-neutral comparison is not significant (p=0.5474).
 
 Next, looking at interaction between each pairwise contrast, pre-vs-post election:
 ```{r fig.height=4}
@@ -268,9 +306,38 @@ pairs(
 
 - Comparing post-election minus pre-election
 
-  - log RT difference he-she is negative (estimate = -0.0792, p < .0001) --- that is, the bias for reading male faster than female pronouns increased.
-  - other contrasts are not significant.
+  - numerical speedup for he versus they and he versus she, and slowdown for she versus they, but no contrasts are significant.
 
+
+And looking at the second pronoun:
+```{r fig.height=4}
+# Fit model with interaction
+lm_spr2 <- lm(
+  log(rt_gmean) ~ pronoun_gender * batch * match,
+  data = spr |> filter(is_target, is_pron2) |> 
+    mutate(batch = fct_rev(batch))
+)
+
+spr_emm2 <- emmeans::emmeans(lm_spr2, ~ pronoun_gender : match : batch)
+
+# spr_emm2 |> plot(by = "batch", comparisons = TRUE) + labs(
+#   title = "Maze RT for each pronoun gender",
+#   subtitle = "overlapping arrows mean difference in means not significant at 0.05 level",
+#   y = "Pronoun gender", x = "residualized log RT"
+# )
+pairs(spr_emm2, by = c("match", "batch"), interaction = TRUE) |>
+  print_plot("Pairwise differences between genders, for each batch") +
+  geom_vline(xintercept = 0, lty = "dashed", color="gray") + 
+  labs(
+    title = "Pairwise difference in maze RT",
+    y = "Pairwise comparison between genders", x = "Difference in log RT"
+  )
+
+message("interaction with whether second pronoun matched first pronoun")
+pairs(spr_emm2, by = c("batch"), interaction = TRUE) |>
+  print()
+```
+ 
 
 ------------------------------------------
 
@@ -348,6 +415,15 @@ cloze_categorized |>
   labs(title = "Type of cloze responses") 
 ```
 
+```{r}
+F_count <- nrow(filter(cloze, batch=="pre", response_type=="pronoun female"))
+M_count <- nrow(filter(cloze, batch=="pre", response_type=="pronoun male"))
+# N_count <- nrow(filter(cloze, batch=="pre", response_type=="pronoun neutral"))
+
+# Test whether proportion F is significantly different from 50%
+c(`prop.test(F, M+F) p-value`=prop.test(F_count, M_count+F_count)$p.value)
+```
+
 Faceting by order:
 ```{r fig.height=5}
 cloze_categorized |>
@@ -422,18 +498,18 @@ These Maze RTs are residualized as with the SPR (control for participant mean re
 
 ```{r}
 p_maze1 <- maze |>
-  filter(is_target) |>
+  filter(is_target, is_pron1) |>
   ggplot(aes(batch, log(rt), color = factor(pronoun_gender))) +
   stat_summary(position=position_dodge2(width=.5)) +
   scale_color_pronouns +
   labs(
      y= "log residualized RT",
-    title = "Maze RT on pronouns by gender", 
+    title = "Maze RT on pronouns by gender, first pronoun", 
     color = "pronoun gender", subtitle = "overall"
     )
 
 p_maze2 <- maze |>
-  filter(is_target) |>
+  filter(is_target, is_pron1) |>
   summarise(
     .by = c(batch, nth_pronoun, pronoun_gender, type),
     m = mean(log(rt)),
@@ -460,7 +536,7 @@ p_maze
 Faceting by order
 ```{r fig.height=4}
 maze |>
-  filter(is_target) |>
+  filter(is_target, is_pron1) |>
   ggplot(aes(pronoun_gender, shape=condition, log(rt), color = factor(pronoun_gender))) +
   stat_summary() +
   scale_color_pronouns +
@@ -476,7 +552,7 @@ And broken down by participant reported preference
 participants |>
   select(workerid, prefer) |>
   inner_join(maze, join_by(workerid)) |>
-  filter(is_target) |>
+  filter(is_target, is_pron1) |>
   mutate(prefer = if_else(!(prefer %in% c("Donald Trump", "Kamala Harris")), "Refuse/No pref./NA", prefer)) |>
   ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
   stat_summary() +
@@ -497,7 +573,7 @@ maze_expectations <- expectations |>
   select(workerid, starts_with("probability")) |>
   left_join(maze)
 p_maze_ex <- maze_expectations |>
-  filter(correct, is_target, batch == "pre") |>
+  filter(correct, is_target, is_pron1, batch == "pre") |>
   ggplot(aes(probability_Harris, log(rt), color = pronoun_gender)) +
   geom_smooth(method = "lm") +
   scale_color_pronouns +
@@ -507,7 +583,7 @@ p_maze_ex <- maze_expectations |>
     x = "belief that president will be Harris", y = "Maze RT (log scale)"
   )
 p_ex_hist <- maze_expectations |>
-  filter(correct, is_target, batch == "pre") |>
+  filter(correct, is_target, is_pron1, batch == "pre") |>
   select(probability_Harris) |>
   distinct() %>%
   {
@@ -528,7 +604,7 @@ p_maze_ex / p_ex_hist + plot_layout(heights = c(4, 1))
 participants |>
   select(workerid, gender, age) |>
   inner_join(maze, join_by(workerid)) |>
-  filter(is_target, age < 100) |>
+  filter(is_target, is_pron1, age < 100) |>
   ggplot(aes(age, log(rt), color = pronoun_gender)) +
   geom_smooth(method = "lm") +
   # geom_point(alpha=0.25) +
@@ -596,7 +672,7 @@ These RTs are residualized.
 #   facet_grid(type1 ~ type2)
 
 p_spr1 <- spr |>
-  filter(is_target) |>
+  filter(is_target, is_pron1) |>
   ggplot(aes(batch, log(rt_gmean), color = factor(pronoun_gender))) +
   stat_summary(position=position_dodge2(width=.5)) +
   scale_color_pronouns +
@@ -607,7 +683,7 @@ p_spr1 <- spr |>
     )
 
 p_spr2 <- spr |>
-  filter(is_target) |>
+  filter(is_target, is_pron1) |>
   summarise(
     .by = c(batch, nth_pronoun, pronoun_gender, type),
     m = mean(log(rt_gmean)),
@@ -633,7 +709,7 @@ p_spr
 Faceting by order
 ```{r fig.height=4}
 spr |>
-  filter(is_target) |>
+  filter(is_target, is_pron1) |>
   ggplot(aes(pronoun_gender, shape=condition, log(rt_gmean), color = factor(pronoun_gender))) +
   stat_summary() +
   scale_color_pronouns +
