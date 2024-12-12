@@ -145,6 +145,7 @@ expectations_test |>
 
 ```
 
+
 ^ In the pre-election batch, mean expectations were 
 `r paste0(round(100 * expectations_test$mean_prob[expectations_test$batch=="pre"], 3), "%")`, and this was not significantly different from 50%. 
 In the post-election batch, mean expectations were 
@@ -865,3 +866,205 @@ spr |>
   facet_grid(item ~ batch, scales="free") +
   labs(title="SPR", y="log residualized RT")
 ```
+
+
+# HSP
+
+```{r}
+
+participants |> group_by(condition, batch) |> tally()
+
+participants |> filter(str_detect(condition, "spr")) |> group_by(batch) |> tally()
+
+response_type_colors <- c(
+  "Harris" = "darkblue", "she" = "blue",
+  "Trump" = "darkred", "he" = "red",
+  "hedged" = "darkgreen", "they" = "#258d3a",
+  "ambig. NP" = "lightgreen",
+  "OTHER" = "gray"
+)
+scale_fill_response_types <- scale_fill_manual(
+  values = response_type_colors,
+  breaks = names(response_type_colors)
+)
+candidate_colors <- c(
+  "Harris" = "darkblue", "Trump" = "darkred",
+  "other" = "gray"
+)
+pronoun_colors <- c(
+  "she" = "blue", "he" = "red",
+  "they" = "#258d3a"
+)
+scale_color_pronouns <- scale_color_manual(
+  values = pronoun_colors,
+  breaks = names(pronoun_colors)
+)
+
+```
+
+```{r}
+
+expectations |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> ggplot(aes(x=candidate, y=probability, fill=candidate))+
+    stat_summary(fun.data="mean_cl_boot", geom="bar", width=.5)+
+    stat_summary(fun.data="mean_cl_boot", color="black", geom="linerange", size=2)+
+  facet_grid(~batch)+
+  scale_fill_manual(values=candidate_colors)+
+  scale_y_continuous(limits=c(0,1))+
+  theme(legend.position = "none",
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/expectation.pdf"), width = 5 , height = 2 )
+
+```
+
+
+```{r}
+cloze_categorized <- cloze |> # filter(response_type!="OTHER") |>
+  mutate(category = case_when(
+    response_type %in% c("Harris", "pronoun female") ~ "female",
+    response_type %in% c("Trump", "pronoun male") ~ "male",
+    response_type %in% c("hedged", "pronoun neutral", "ambiguous NP") ~ "neutral",
+    .default = "OTHER"
+  )) |> mutate(response_type = factor(response_type, 
+                                      levels=c("Harris", "pronoun female",
+                                               "Trump", "pronoun male",
+                                               "hedged", "pronoun neutral",
+                                               "ambiguous NP"), 
+                                      labels=c("Harris", "she", "Trump", "he",
+                                               "hedged", "they", "ambig. NP"))
+  ) |> 
+  group_by(batch, response_type, category) |> summarize(n=n()) |> group_by(batch) |> mutate(n=n/sum(n))
+
+cloze_categorized |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> filter(response_type!="OTHER") |> ungroup() |> 
+  ggplot(aes(category, n,fill = response_type)) +
+          geom_col( color="black") + 
+   facet_wrap(~batch) +
+  scale_fill_response_types +
+  guides(fill=guide_legend(nrow=2))+
+  labs(y="Fraction")+
+    theme(legend.position = "bottom",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/cloze.pdf"), width = 5, height = 3)
+
+```
+
+
+```{r}
+m1 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>
+  mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
+  filter(is_target) |>
+  filter(is_pron1) |> 
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "none",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/maze.pdf"), width= 5, height =2.5)
+
+m2 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>   mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
+  filter(is_target) |>
+  filter(is_pron2) |> 
+  mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |> 
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender), shape=match, lty=match)) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  guides(shape=guide_legend(), color="none")+
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "bottom",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/maze2.pdf"), width = 5, height =2.5)
+
+```
+
+
+```{r}
+spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> 
+    mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
+  filter(is_target) |>
+  filter(is_pron1) |> 
+  ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender))) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "none",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/spr.pdf"), width= 5, height =2.5)
+
+spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> 
+    mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
+  filter(is_target) |>
+  filter(is_pron2) |> 
+  mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |> 
+  ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender), shape=match, lty=match)) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  guides(shape=guide_legend(), color="none")+
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "bottom",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/spr2.pdf"), width = 5, height =2.5)
+
+```
+
+
