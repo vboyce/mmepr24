@@ -573,25 +573,35 @@ maze_expectations <- expectations |>
   select(workerid, starts_with("probability")) |>
   left_join(maze)
 p_maze_ex <- maze_expectations |>
-  filter(correct, is_target, is_pron1, batch == "pre") |>
+  filter(correct, is_target, is_pron1, batch == "pre") %>%
+  filter(
+    probability_Harris >= quantile(distinct(select(., probability_Harris))$probability_Harris, .05),
+    probability_Harris <= quantile(distinct(select(., probability_Harris))$probability_Harris, .95),
+  ) |>
   ggplot(aes(probability_Harris, log(rt), color = pronoun_gender)) +
-  geom_smooth(method = "lm") +
+  geom_smooth(
+    # method = "lm"
+  ) +
+  geom_rug(sides="b") +
+  xlim(0,1) +
   scale_color_pronouns +
   labs(
     title = "Maze RT on pronouns, plotted against probability of female president",
-    subtitle = "only pre-election data",
+    subtitle = "only pre-election data, middle 90%",
     x = "belief that president will be Harris", y = "Maze RT (log scale)"
   )
 p_ex_hist <- maze_expectations |>
   filter(correct, is_target, is_pron1, batch == "pre") |>
-  select(probability_Harris) |>
+  select(probability_Harris, pronoun_gender) |>
   distinct() %>%
   {
-    quants <- quantile(.$probability_Harris, c(0.25, 0.5, 0.75))
-    ggplot(., aes(probability_Harris)) +
-      geom_histogram(fill="gray") +
+    quants <- quantile(.$probability_Harris, c(0.05, 0.25, 0.5, 0.75, 0.95))
+    ggplot(., aes(probability_Harris, fill=pronoun_gender)) +
+      geom_histogram() +
+      scale_color_pronouns +
       geom_vline(xintercept = quants) +
       scale_y_reverse() +
+      xlim(0,1) +
       theme_minimal()
   }
 
