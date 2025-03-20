@@ -28,8 +28,8 @@ theme_set(theme_bw())
 response_type_colors <- c(
   "Harris" = "darkblue", "pronoun female" = "blue",
   "Trump" = "darkred", "pronoun male" = "red",
-  "hedged" = "darkgreen", "pronoun neutral" = "green",
-  "ambiguous NP" = "lightgreen",
+  "hedged" = "darkgreen", "pronoun neutral" = "#15bb36",
+  "ambiguous NP" = "#293629",
   "OTHER" = "gray"
 )
 scale_fill_response_types <- scale_fill_manual(
@@ -42,9 +42,13 @@ candidate_colors <- c(
 )
 pronoun_colors <- c(
   "she" = "blue", "he" = "red",
-  "they" = "green"
+  "they" = "#15bb36"
 )
 scale_color_pronouns <- scale_color_manual(
+  values = pronoun_colors,
+  breaks = names(pronoun_colors)
+)
+scale_fill_pronouns <- scale_fill_manual(
   values = pronoun_colors,
   breaks = names(pronoun_colors)
 )
@@ -575,10 +579,10 @@ maze_expectations <- expectations |>
   left_join(maze)
 p_maze_ex <- maze_expectations |>
   filter(correct, is_target, is_pron1, batch == "pre") %>%
-  filter(
-    probability_Harris >= quantile(distinct(select(., probability_Harris))$probability_Harris, .05),
-    probability_Harris <= quantile(distinct(select(., probability_Harris))$probability_Harris, .95),
-  ) |>
+  # filter(
+  #   probability_Harris >= quantile(distinct(select(., probability_Harris))$probability_Harris, .15),
+  #   probability_Harris <= quantile(distinct(select(., probability_Harris))$probability_Harris, .85),
+  # ) |>
   ggplot(aes(probability_Harris, log(rt), color = pronoun_gender)) +
   geom_smooth(
     # method = "lm"
@@ -588,7 +592,7 @@ p_maze_ex <- maze_expectations |>
   scale_color_pronouns +
   labs(
     title = "Maze RT on pronouns, plotted against probability of female president",
-    subtitle = "only pre-election data, middle 90%",
+    # subtitle = "only pre-election data, middle 90%",
     x = "belief that president will be Harris", y = "Maze RT (log scale)"
   )
 p_ex_hist <- maze_expectations |>
@@ -610,6 +614,27 @@ p_maze_ex / p_ex_hist + plot_layout(heights = c(4, 1))
 ```
 ^ It looks like the male-pronoun processing bias (/ female-pronoun processing penalty) gets smaller as belief that the president would be female is higher.  But note the majority of participants are in the middle of the distribution.
 
+```{r}
+# maze_expectations |>
+  # filter(correct, is_target, is_pron1, batch == "pre") %>%
+  # quantile(distinct(select(., probability_Harris))$probability_Harris, .33)
+maze_expectations |>
+  filter(correct, is_target, is_pron1, batch == "pre") |>
+  mutate(prob_bin = case_when(
+    probability_Harris > 0.5 ~ "P(Harris) > 50%",
+    probability_Harris < 0.5 ~ "P(Harris) < 50%",
+    probability_Harris == 0.5 ~ "P(Harris) = 50%"
+  )) |>
+  ggplot(aes(prob_bin, log(rt), fill = pronoun_gender)) +
+  geom_boxplot() +
+  scale_fill_pronouns +
+  labs(
+    title = "Maze RT on pronouns by belief in Harris presidency",
+    x = "Belief about next president",
+    y = "Maze RT (log scale)",
+    fill = "Pronoun gender"
+  )
+```
 
 ```{r}
 participants |>
@@ -868,7 +893,7 @@ spr |>
 ```
 
 
-# HSP
+# HSP abstract
 
 ```{r}
 
@@ -1068,3 +1093,263 @@ ggsave(here("writing/HSP2025/spr2.pdf"), width = 5, height =2.5)
 ```
 
 
+
+# HSP poster
+
+```{r}
+
+participants |> group_by(condition, batch) |> tally()
+
+participants |> filter(str_detect(condition, "spr")) |> group_by(batch) |> tally()
+
+response_type_colors <- c(
+  "Harris" = "darkblue", "she" = "blue",
+  "Trump" = "darkred", "he" = "red",
+  "ambig. NP" = "darkgreen", "they" = "#15bb36",
+  "hedged" = "#293629", 
+  "OTHER" = "gray"
+)
+scale_fill_response_types <- scale_fill_manual(
+  values = response_type_colors,
+  breaks = names(response_type_colors)
+)
+candidate_colors <- c(
+  "Harris" = "darkblue", "Trump" = "darkred",
+  "other" = "gray"
+)
+pronoun_colors <- c(
+  "she" = "blue", "he" = "red",
+  "they" = "#15bb36"
+)
+scale_color_pronouns <- scale_color_manual(
+  values = pronoun_colors,
+  breaks = names(pronoun_colors)
+)
+
+```
+
+```{r}
+
+expectations |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> ggplot(aes(x=candidate, y=probability, fill=candidate))+
+    stat_summary(fun.data="mean_cl_boot", geom="bar", width=.5)+
+    stat_summary(fun.data="mean_cl_boot", color="black", geom="linerange", size=2)+
+  facet_grid(~batch)+
+  scale_fill_manual(values=candidate_colors)+
+  scale_y_continuous(limits=c(0,1))+
+  theme(legend.position = "none",
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/expectation.pdf"), width = 5 , height = 2 )
+
+```
+
+
+```{r}
+cloze_categorized <- cloze |> # filter(response_type!="OTHER") |>
+  mutate(category = case_when(
+    response_type %in% c("Harris", "pronoun female") ~ "female",
+    response_type %in% c("Trump", "pronoun male") ~ "male",
+    response_type %in% c("hedged", "pronoun neutral", "ambiguous NP") ~ "neutral",
+    .default = "OTHER"
+  )) |> mutate(response_type = factor(
+    response_type, 
+    levels=c(
+      "Harris", "pronoun female","Trump", "pronoun male",
+      "hedged","ambiguous NP","pronoun neutral"), 
+    labels=c(
+      "Harris", "she", "Trump", "he",
+      "hedged", "ambig. NP", "they"))
+  ) |> 
+  group_by(batch, response_type, category) |> summarize(n=n()) |> group_by(batch) |> mutate(n=n/sum(n))
+
+cloze_categorized |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> filter(response_type!="OTHER") |> ungroup() |> 
+  ggplot(aes(category, n,fill = response_type)) +
+          geom_col( color="black") + 
+   facet_wrap(~batch) +
+  scale_fill_response_types +
+  guides(fill=guide_legend(nrow=2))+
+  labs(y="Fraction")+
+    theme(legend.position = "bottom",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/cloze.pdf"), width = 5, height = 3)
+```
+
+
+```{r}
+m1 <- maze |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>
+  mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
+  filter(is_target) |>
+  filter(is_pron1) |> 
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "none",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+m1
+ggsave(here("writing/HSP2025/maze.pdf"), width= 5, height =2.5)
+
+m2 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>   mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
+  filter(is_target) |>
+  filter(is_pron2) |> 
+  mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |> 
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender), shape=match, lty=match)) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  guides(shape=guide_legend(), color="none")+
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "bottom",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+m2
+ggsave(here("writing/HSP2025/maze2.pdf"), width = 5, height = 2.5)
+```
+
+```{r}
+maze_expectations |> filter(batch=="pre") |>
+  mutate(
+    pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they")),
+    expect = factor(case_when(
+      probability_Harris > .51 ~ "Expect female", 
+      probability_Harris < .49 ~ "Expect male",.default="Even"))) |> filter(expect != "Even") |>
+  filter(is_target) |>
+  filter(is_pron1) |> drop_na(expect) |>
+  ggplot(aes(pronoun_gender, log(rt), color=factor(pronoun_gender))) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~expect,nrow=1)+
+  theme(legend.position = "none",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+        strip.background = element_blank())
+ggsave(here("writing/HSP2025/maze3.pdf"), width = 5, height = 2.5)
+```
+
+```{r}
+spr |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> 
+    mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
+  filter(is_target) |>
+  filter(is_pron1) |> 
+  ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender))) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "none",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+ggsave(here("writing/HSP2025/spr.pdf"), width= 5, height =2.5)
+
+spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> 
+    mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
+  filter(is_target) |>
+  filter(is_pron2) |> 
+  mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |> 
+  ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender), shape=match, lty=match)) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  guides(shape=guide_legend(), color="none")+
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "bottom",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/spr2.pdf"), width = 5, height =2.5)
+
+```
+
+
+```{r}
+
+spr_expectations <- expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  left_join(spr)
+
+spr_expectations |> filter(batch=="pre") |>
+  mutate(
+    pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they")),
+    expect = factor(case_when(
+      probability_Harris > .51 ~ "Expect Harris", 
+      probability_Harris <= .49 ~ "Expect Trump",.default="Even"))) |> filter(expect != "Even") |>
+  filter(is_target) |>
+  filter(is_pron1) |> drop_na(expect) |>
+  ggplot(aes(pronoun_gender, log(rt), color=factor(pronoun_gender))) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns +
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~expect,nrow=1)+
+  theme(legend.position = "none",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+        strip.background = element_blank())
+
+ggsave(here("writing/HSP2025/spr3.pdf"), width = 5, height = 2.5)
+```
