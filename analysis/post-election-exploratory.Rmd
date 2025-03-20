@@ -8,7 +8,7 @@ output:
     df_print: paged
 ---
 
-# Exploratory data analysis
+# Setup and read in data
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
@@ -26,15 +26,21 @@ library(patchwork)
 theme_set(theme_bw())
 
 response_type_colors <- c(
-  "Harris" = "darkblue", "pronoun female" = "blue",
-  "Trump" = "darkred", "pronoun male" = "red",
-  "hedged" = "darkgreen", "pronoun neutral" = "#15bb36",
-  "ambiguous NP" = "#293629",
-  "OTHER" = "gray"
+  "Harris" = "darkblue", "she" = "blue",
+  "Trump" = "darkred", "he" = "red",
+  "NP" = "darkgreen", "they" = "#15bb36",
+  "hedged" = "#293629"
+)
+response_type_colors_all <- c(response_type_colors, "OTHER" = "gray")
+
+scale_fill_response_types_all <- scale_fill_manual(
+  values = response_type_colors_all,
+  breaks = names(response_type_colors_all)
 )
 scale_fill_response_types <- scale_fill_manual(
   values = response_type_colors,
-  breaks = names(response_type_colors)
+  breaks = names(response_type_colors),
+  drop = FALSE
 )
 candidate_colors <- c(
   "Harris" = "darkblue", "Trump" = "darkred",
@@ -78,7 +84,11 @@ cloze <- read_processed("pre_cloze.csv") |>
     response_type = factor(response_type,
       levels = c(
         "Harris", "pronoun female", "Trump", "pronoun male",
-        "hedged", "pronoun neutral", "ambiguous NP", "OTHER"
+        "hedged", "ambiguous NP", "pronoun neutral", "OTHER"
+      ),
+      labels = c(
+        "Harris", "she", "Trump", "he",
+        "hedged", "NP", "they", "OTHER"
       )
     )
   )
@@ -116,7 +126,9 @@ if (length(participants_both) > 0) {
 }
 ```
 
-# Event expectation
+# Exploratory Data analysis
+
+## Event expectation
 
 ```{r fig.height=4}
 # Test whether expectations differ from 50-50 in each batch
@@ -155,7 +167,7 @@ expectations_test |>
 In the post-election batch, mean expectations were 
 `r paste0(round(100 * expectations_test$mean_prob[expectations_test$batch=="post"], 3), "%")`, and this was significantly different from 50%.
 
-# Maze
+## Maze
 
 Pairwise comparisons between genders (first pronoun only): 
 Within each batch {pre-election, post-election}, is there a significant difference in reading times for each pairwise comparison among {male,female,neutral} pronouns?
@@ -250,7 +262,7 @@ pairs(maze_emm2, by = c("batch"), interaction = TRUE) |>
   print()
 ```
  
-# SPR
+## SPR
 
 Pairwise comparisons between genders (first pronoun only): 
 Within each batch {pre-election, post-election}, is there a significant difference in reading times for each pairwise comparison among {male,female,neutral} pronouns?
@@ -346,7 +358,7 @@ pairs(spr_emm2, by = c("batch"), interaction = TRUE) |>
 
 ------------------------------------------
 
-# Other exploratory plotting
+## Other exploratory plotting
 
 
 
@@ -362,7 +374,7 @@ participants |>
   mutate(total = cloze + maze + spr) |> knitr::kable()
 ```
 
-## Expectations
+### Expectations
 
 Check for order effect on belief estimation results, in pre- and post- election data.
 ```{r fig.height=6}
@@ -402,14 +414,14 @@ expectations |>
   stat_summary(fun.data = "mean_se", geom = "pointrange")
 ```
 
-## Cloze
+### Cloze
 
 ```{r fig.height=5}
 cloze_categorized <- cloze |> # filter(response_type!="OTHER") |>
   mutate(category = case_when(
-    response_type %in% c("Harris", "pronoun female") ~ "female",
-    response_type %in% c("Trump", "pronoun male") ~ "male",
-    response_type %in% c("hedged", "pronoun neutral", "ambiguous NP") ~ "neutral",
+    response_type %in% c("Harris", "she") ~ "female",
+    response_type %in% c("Trump", "he") ~ "male",
+    response_type %in% c("hedged", "they", "NP") ~ "neutral",
     .default = "OTHER"
   ))
 cloze_categorized |>
@@ -421,8 +433,8 @@ cloze_categorized |>
 ```
 
 ```{r}
-F_count <- nrow(filter(cloze, batch=="pre", response_type=="pronoun female"))
-M_count <- nrow(filter(cloze, batch=="pre", response_type=="pronoun male"))
+F_count <- nrow(filter(cloze, batch=="pre", response_type=="she"))
+M_count <- nrow(filter(cloze, batch=="pre", response_type=="he"))
 # N_count <- nrow(filter(cloze, batch=="pre", response_type=="pronoun neutral"))
 
 # Test whether proportion F is significantly different from 50%
@@ -445,10 +457,10 @@ _But it seems the difference between orders here is actually not significant, pe
 ```{r fig.width = 6, fig.height = 3, out.width="60%"}
 # remotes::install_github("tmalsburg/binomialCRIs")
 if (require("binomialCRIs")) {
-  F_before <- nrow(filter(cloze,batch=="pre", condition=="cloze-event", response_type=="pronoun female"))
-  M_before <- nrow(filter(cloze,batch=="pre", condition=="cloze-event", response_type=="pronoun male"))
-  F_after <- nrow(filter(cloze, batch=="pre", condition=="event-cloze", response_type=="pronoun female"))
-  M_after <- nrow(filter(cloze, batch=="pre", condition=="event-cloze", response_type=="pronoun male"))
+  F_before <- nrow(filter(cloze,batch=="pre", condition=="cloze-event", response_type=="she"))
+  M_before <- nrow(filter(cloze,batch=="pre", condition=="cloze-event", response_type=="he"))
+  F_after <- nrow(filter(cloze, batch=="pre", condition=="event-cloze", response_type=="she"))
+  M_after <- nrow(filter(cloze, batch=="pre", condition=="event-cloze", response_type=="he"))
   plot_binomial_hpdi(
     n_successes = F_before, n_trials = F_before + M_before,
     prob = 0.95
@@ -465,7 +477,7 @@ if (require("binomialCRIs")) {
 
 ```
 
-### By item cloze breakdown
+#### By item cloze breakdown
 ```{r fig.height=14}
 plot_cloze_facet_items <- function(data, title) {
   data |>
@@ -489,7 +501,7 @@ p_ci1 / p_ci2 +
   plot_annotation(title="Type of cloze responses, by item",subtitle = "(OTHER responses not shown)")
 ```
 
-## Maze
+### Maze
 Look at average Maze RT by gender of pronoun, and for each condition of two sentences presented.
 Shows an effect of gender (male pronoun is read faster than female, neutral is perhaps even faster than male).
 These Maze RTs are residualized as with the SPR (control for participant mean reading speed and eg word length, punctuation, and by item effects).
@@ -579,15 +591,13 @@ maze_expectations <- expectations |>
   left_join(maze)
 p_maze_ex <- maze_expectations |>
   filter(correct, is_target, is_pron1, batch == "pre") %>%
-  # filter(
-  #   probability_Harris >= quantile(distinct(select(., probability_Harris))$probability_Harris, .15),
-  #   probability_Harris <= quantile(distinct(select(., probability_Harris))$probability_Harris, .85),
-  # ) |>
   ggplot(aes(probability_Harris, log(rt), color = pronoun_gender)) +
-  geom_smooth(
+  geom_rug(sides="b") +
+  geom_smooth(data = . %>% 
+    filter(probability_Harris >= quantile(probability_Harris, 0.15),
+           probability_Harris <= quantile(probability_Harris, 0.85)),
     # method = "lm"
   ) +
-  geom_rug(sides="b") +
   xlim(0,1) +
   scale_color_pronouns +
   labs(
@@ -602,8 +612,8 @@ p_ex_hist <- maze_expectations |>
   {
     quants <- quantile(.$probability_Harris, c(0.05, 0.25, 0.5, 0.75, 0.95))
     ggplot(., aes(probability_Harris, fill=pronoun_gender)) +
-      geom_histogram() +
-      scale_color_pronouns +
+      geom_histogram(bins=25, center=0.5) +
+      scale_fill_pronouns +
       geom_vline(xintercept = quants) +
       scale_y_reverse() +
       xlim(0,1) +
@@ -613,28 +623,6 @@ p_ex_hist <- maze_expectations |>
 p_maze_ex / p_ex_hist + plot_layout(heights = c(4, 1))
 ```
 ^ It looks like the male-pronoun processing bias (/ female-pronoun processing penalty) gets smaller as belief that the president would be female is higher.  But note the majority of participants are in the middle of the distribution.
-
-```{r}
-# maze_expectations |>
-  # filter(correct, is_target, is_pron1, batch == "pre") %>%
-  # quantile(distinct(select(., probability_Harris))$probability_Harris, .33)
-maze_expectations |>
-  filter(correct, is_target, is_pron1, batch == "pre") |>
-  mutate(prob_bin = case_when(
-    probability_Harris > 0.5 ~ "P(Harris) > 50%",
-    probability_Harris < 0.5 ~ "P(Harris) < 50%",
-    probability_Harris == 0.5 ~ "P(Harris) = 50%"
-  )) |>
-  ggplot(aes(prob_bin, log(rt), fill = pronoun_gender)) +
-  geom_boxplot() +
-  scale_fill_pronouns +
-  labs(
-    title = "Maze RT on pronouns by belief in Harris presidency",
-    x = "Belief about next president",
-    y = "Maze RT (log scale)",
-    fill = "Pronoun gender"
-  )
-```
 
 ```{r}
 participants |>
@@ -654,7 +642,7 @@ participants |>
 ^Looking at participant age, there also could be something interesting going on, at least with the decreasing processing cost of the neutral pronoun for younger readers.
 
 
-### Maze reading time tracks on each of the target sentences:
+#### Maze reading time tracks on each of the target sentences:
 
 
 ```{r fig.height=12}
@@ -693,7 +681,7 @@ maze |>
   labs(title="Maze", y="log RT")
 ```
 
-## SPR
+### SPR
 
 Likewise look at average SPR RT by gender of pronoun, and for each condition of two sentences presented.
 These RTs are residualized.
@@ -853,7 +841,7 @@ participants |>
 ^ SPR averages broken down by participant political affiliation, as with Maze above.
 
 
-### SPR tracks on each of the target sentences:
+#### SPR tracks on each of the target sentences:
 
 ```{r fig.height=12}
 spr |>
@@ -893,6 +881,7 @@ spr |>
 ```
 
 
+
 # HSP abstract
 
 ```{r}
@@ -905,28 +894,24 @@ participants |> group_by(condition, batch) |> tally()
 
 participants |> filter(str_detect(condition, "spr")) |> group_by(batch) |> tally()
 
-response_type_colors <- c(
+response_type_colors_ABSTRACT <- c(
   "Harris" = "darkblue", "she" = "blue",
   "Trump" = "darkred", "he" = "red",
   "hedged" = "darkgreen", "they" = "#258d3a",
-  "ambig. NP" = "lightgreen",
+  "NP" = "lightgreen",
   "OTHER" = "gray"
 )
-scale_fill_response_types <- scale_fill_manual(
-  values = response_type_colors,
-  breaks = names(response_type_colors)
+scale_fill_response_types_ABSTRACT <- scale_fill_manual(
+  values = response_type_colors_ABSTRACT,
+  breaks = names(response_type_colors_ABSTRACT)
 )
-candidate_colors <- c(
-  "Harris" = "darkblue", "Trump" = "darkred",
-  "other" = "gray"
-)
-pronoun_colors <- c(
+pronoun_colors_ABSTRACT <- c(
   "she" = "blue", "he" = "red",
   "they" = "#258d3a"
 )
-scale_color_pronouns <- scale_color_manual(
-  values = pronoun_colors,
-  breaks = names(pronoun_colors)
+scale_color_pronouns_ABSTRACT <- scale_color_manual(
+  values = pronoun_colors_ABSTRACT,
+  breaks = names(pronoun_colors_ABSTRACT)
 )
 
 ```
@@ -952,27 +937,23 @@ ggsave(file.path(outdir_abstract, "expectation.pdf"), width = 5 , height = 2 )
 
 
 ```{r}
-cloze_categorized <- cloze |> # filter(response_type!="OTHER") |>
+cloze_categorized_stats <- cloze |>
   mutate(category = case_when(
-    response_type %in% c("Harris", "pronoun female") ~ "female",
-    response_type %in% c("Trump", "pronoun male") ~ "male",
-    response_type %in% c("hedged", "pronoun neutral", "ambiguous NP") ~ "neutral",
+    response_type %in% c("Harris", "she") ~ "female",
+    response_type %in% c("Trump", "he") ~ "male",
+    response_type %in% c("hedged", "they", "NP") ~ "neutral",
     .default = "OTHER"
-  )) |> mutate(response_type = factor(response_type, 
-                                      levels=c("Harris", "pronoun female",
-                                               "Trump", "pronoun male",
-                                               "hedged", "pronoun neutral",
-                                               "ambiguous NP"), 
-                                      labels=c("Harris", "she", "Trump", "he",
-                                               "hedged", "they", "ambig. NP"))
-  ) |> 
-  group_by(batch, response_type, category) |> summarize(n=n()) |> group_by(batch) |> mutate(n=n/sum(n))
+  )) |>
+  group_by(batch, response_type, category) |>
+  summarize(n = n()) |>
+  group_by(batch) |>
+  mutate(n = n / sum(n))
 
-cloze_categorized |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> filter(response_type!="OTHER") |> ungroup() |> 
+cloze_categorized_stats |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> filter(response_type!="OTHER") |> ungroup() |> 
   ggplot(aes(category, n,fill = response_type)) +
           geom_col( color="black") + 
    facet_wrap(~batch) +
-  scale_fill_response_types +
+  scale_fill_response_types_ABSTRACT +
   guides(fill=guide_legend(nrow=2))+
   labs(y="Fraction")+
     theme(legend.position = "bottom",
@@ -993,11 +974,10 @@ ggsave(file.path(outdir_abstract, "cloze.pdf"), width = 5, height = 3)
 ```{r}
 m1 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>
   mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
-  filter(is_target) |>
-  filter(is_pron1) |> 
+  filter(is_target, is_pron1) |> 
   ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
   stat_summary(position=position_dodge2(width=.5)) +
-  scale_color_pronouns +
+  scale_color_pronouns_ABSTRACT +
   labs(
      y= "log residualized RT",
     color = "pronoun gender"
@@ -1016,12 +996,11 @@ m1 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre",
 ggsave(file.path(outdir_abstract, "maze.pdf"), width= 5, height =2.5)
 
 m2 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>   mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
-  filter(is_target) |>
-  filter(is_pron2) |> 
+  filter(is_target, is_pron2) |> 
   mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |> 
   ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender), shape=match, lty=match)) +
   stat_summary(position=position_dodge2(width=.5)) +
-  scale_color_pronouns +
+  scale_color_pronouns_ABSTRACT +
   guides(shape=guide_legend(), color="none")+
   labs(
      y= "log residualized RT",
@@ -1046,11 +1025,10 @@ ggsave(file.path(outdir_abstract, "maze2.pdf"), width = 5, height =2.5)
 ```{r}
 spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> 
     mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
-  filter(is_target) |>
-  filter(is_pron1) |> 
+  filter(is_target, is_pron1) |> 
   ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender))) +
   stat_summary(position=position_dodge2(width=.5)) +
-  scale_color_pronouns +
+  scale_color_pronouns_ABSTRACT +
   labs(
      y= "log residualized RT",
     color = "pronoun gender"
@@ -1070,12 +1048,11 @@ ggsave(file.path(outdir_abstract, "spr.pdf"), width= 5, height =2.5)
 
 spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> 
     mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
-  filter(is_target) |>
-  filter(is_pron2) |> 
+  filter(is_target, is_pron2) |> 
   mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |> 
   ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender), shape=match, lty=match)) +
   stat_summary(position=position_dodge2(width=.5)) +
-  scale_color_pronouns +
+  scale_color_pronouns_ABSTRACT +
   guides(shape=guide_legend(), color="none")+
   labs(
      y= "log residualized RT",
@@ -1095,3 +1072,232 @@ spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"
 ggsave(file.path(outdir_abstract, "spr2.pdf"), width = 5, height =2.5)
 ```
 
+
+# HSP poster
+
+Need only run the `setup` and `read` chunks before below.
+
+```{r}
+# Where to save plots
+outdir_poster <- here(
+  file.path("output", "HSP2025-poster")
+)
+THEME_POSTER <- theme(
+  axis.title = element_text(size = "14"),
+  axis.text = element_text(size = "14"),
+  strip.text = element_text(size = "14"),
+  legend.text = element_text(size = "10"),
+  legend.title = element_blank(),
+  axis.title.x = element_blank(),
+  strip.background = element_blank()
+)
+# participants |> group_by(condition, batch) |> tally()
+# participants |> filter(str_detect(condition, "spr")) |> group_by(batch) |> tally()
+
+BATCH <- "pre"
+```
+
+```{r}
+expectations |>
+  filter(batch == BATCH) |>
+  ggplot(aes(x = candidate, y = probability, fill = candidate)) +
+  stat_summary(fun.data = "mean_cl_boot", geom = "bar", width = .5) +
+  stat_summary(fun.data = "mean_cl_boot", color = "black", geom = "linerange", size = 2) +
+  scale_fill_manual(values = candidate_colors) +
+  scale_y_continuous(limits = c(0, 1)) +
+  THEME_POSTER +
+  theme(legend.position = "none")
+
+ggsave(file.path(outdir_poster, glue::glue("expectation_{BATCH}.pdf")), width = 3.25 , height = 2.5)
+
+cloze_categorized_stats <- cloze |>
+  mutate(category = case_when(
+    response_type %in% c("Harris", "she") ~ "female",
+    response_type %in% c("Trump", "he") ~ "male",
+    response_type %in% c("hedged", "they", "NP") ~ "neutral",
+    .default = "OTHER"
+  )) |>
+  summarize(.by = c(batch, response_type, category), n = n()) |>
+  mutate(.by = "batch", n = n / sum(n))
+
+cloze_categorized_stats |>
+  filter(batch == BATCH) |>
+  filter(response_type != "OTHER") |>
+  ungroup() |>
+  ggplot(aes(category, n, fill = response_type)) +
+  geom_col() +
+  scale_fill_response_types +
+  guides(fill = guide_legend(nrow = 2)) +
+  labs(y = "Fraction") +
+  THEME_POSTER +
+  theme(
+    legend.position = c(-.2,-.275),
+    legend.justification='left',
+    plot.margin = unit(c(0.1,0.1,3,0.1), 'lines')
+  )
+
+ggsave(file.path(outdir_poster, glue::glue("cloze_{BATCH}.pdf")), width = 3.25, height = 3)
+
+maze |>
+  filter(batch == BATCH) |>
+  mutate(
+    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
+  ) |>
+  filter(is_target, is_pron1) |>
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+  stat_summary(position = position_dodge2(width = .5)) +
+  scale_color_pronouns +
+  labs(y = "log residualized RT", color = "pronoun gender") +
+  THEME_POSTER +
+  theme(legend.position = "none")
+
+ggsave(file.path(outdir_poster, glue::glue("maze_{BATCH}.pdf")), width = 3.25, height = 2.5)
+
+maze |>
+  filter(batch == BATCH) |>
+  mutate(
+    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
+  ) |>
+  filter(is_target, is_pron2) |>
+  mutate(match = ifelse(type %in% c("she-she", "he-he", "they-they"), "match", "mismatch")) |>
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender), shape = match, lty = match)) +
+  stat_summary(position = position_dodge2(width = .5)) +
+  scale_color_pronouns +
+  guides(shape = guide_legend(), color = "none") +
+  labs(y = "log residualized RT", color = "pronoun gender") +
+  THEME_POSTER +
+  theme(
+    legend.position = "bottom",
+    legend.margin = margin(0.1, 0.1, 0.1, 0.1, "lines")
+  )
+
+ggsave(file.path(outdir_poster, glue::glue("maze2_{BATCH}.pdf")), width = 3.25, height = 2.5)
+
+maze_expectations <- expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  left_join(maze)
+
+maze_expectations |>
+  filter(batch == BATCH) |>
+  mutate(
+    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they")),
+    expect = factor(case_when(
+      probability_Harris > .51 ~ "Expect female",
+      probability_Harris < .49 ~ "Expect male",
+      .default = "Even"
+    ))
+  ) |>
+  filter(expect != "Even") |>
+  filter(is_target, is_pron1) |>
+  drop_na(expect) |>
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+  stat_summary(position = position_dodge2(width = .5)) +
+  scale_color_pronouns +
+  labs(y = "log residualized RT", color = "pronoun gender") +
+  facet_wrap(~expect, nrow = 1) +
+  THEME_POSTER +
+  theme(legend.position = "none")
+if (BATCH == "pre") ggsave(
+  file.path(outdir_poster, glue::glue("maze_expect_{BATCH}.pdf")), width = 3.5, height = 2.5
+)
+
+expectations |>
+  filter(batch == BATCH) |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  mutate(expect = factor(case_when(
+    probability_Trump < .49 ~ "Expect female",
+    probability_Trump > .511 ~ "Expect male",
+    .default = "Even"
+  ))) |>
+  ggplot(aes(probability_Trump, fill = expect)) +
+  geom_histogram(bins = 50, center = 0.5) +
+  scale_fill_manual(values = c(
+    "Expect female" = "darkblue", 
+    "Expect male" = "darkred", 
+    "Even" = "gray")) +
+  THEME_POSTER +
+  theme(axis.title.x = NULL, legend.position = "none") +
+  labs(x = "Probability Trump")
+
+ggsave(file.path(outdir_poster, glue::glue("expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
+
+# expectations |> filter(batch == BATCH) |> filter(candidate!="other") |>
+#   ggplot() +
+#   geom_histogram(aes(probability, fill=candidate), position="identity", bins=25,center = 0.5, alpha=0.5) +
+#   scale_fill_manual(values=candidate_colors) +
+#   THEME_POSTER
+
+spr |>
+  filter(batch == BATCH) |>
+  mutate(
+    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
+  ) |>
+  filter(is_target, is_pron1) |>
+  ggplot(aes(
+    pronoun_gender, log(rt_gmean),
+    color = factor(pronoun_gender)
+  )) +
+  stat_summary(position = position_dodge2(width = .5)) +
+  scale_color_pronouns +
+  labs(y = "log residualized RT", color = "pronoun gender") +
+  THEME_POSTER +
+  theme(legend.position = "none")
+
+ggsave(file.path(outdir_poster, glue::glue("spr_{BATCH}.pdf")), width = 3.25, height = 2.5)
+
+spr |>
+  filter(batch == BATCH) |>
+  mutate(
+    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
+  ) |>
+  filter(is_target, is_pron2) |>
+  mutate(match = ifelse(
+    type %in% c("she-she", "he-he", "they-they"), "match", "mismatch"
+  )) |>
+  ggplot(aes(
+    pronoun_gender, log(rt_gmean),
+    color = factor(pronoun_gender), shape = match, lty = match
+  )) +
+  stat_summary(position = position_dodge2(width = .5)) +
+  scale_color_pronouns +
+  guides(shape = guide_legend(), color = "none") +
+  labs(y = "log residualized RT", color = "pronoun gender") +
+  THEME_POSTER +
+  theme(
+    legend.position = "bottom",
+    legend.margin = margin(0.1, 0.1, 0.1, 0.1, "lines")
+  )
+
+ggsave(file.path(outdir_poster, glue::glue("spr2_{BATCH}.pdf")), width = 3.25, height =2.5)
+
+spr_expectations <- expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  left_join(spr)
+spr_expectations |>
+  filter(batch == BATCH) |>
+  mutate(
+    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they")),
+    expect = factor(case_when(
+      probability_Harris > .51 ~ "Expect Harris",
+      probability_Harris <= .49 ~ "Expect Trump",
+      .default = "Even"
+    ))
+  ) |>
+  filter(expect != "Even") |>
+  drop_na(expect) |>
+  filter(is_target, is_pron1) |>
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+  stat_summary(position = position_dodge2(width = .5)) +
+  scale_color_pronouns +
+  labs(y = "log residualized RT", color = "pronoun gender") +
+  facet_wrap(~expect, nrow = 1) +
+  THEME_POSTER +
+  theme(legend.position = "none")
+
+if (BATCH == "pre") ggsave(
+  file.path(outdir_poster, glue::glue("spr_expect_{BATCH}.pdf")), width = 3.5, height = 2.5
+)
+```
