@@ -1094,6 +1094,26 @@ THEME_POSTER <- theme(
 # participants |> group_by(condition, batch) |> tally()
 # participants |> filter(str_detect(condition, "spr")) |> group_by(batch) |> tally()
 
+cloze_categorized <- cloze |>
+  mutate(category = case_when(
+    response_type %in% c("Harris", "she") ~ "female",
+    response_type %in% c("Trump", "he") ~ "male",
+    response_type %in% c("hedged", "they", "NP") ~ "neutral",
+    .default = "OTHER"
+  )) 
+cloze_expectations <- expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  right_join(cloze_categorized)
+maze_expectations <- expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  right_join(maze)
+spr_expectations <- expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  right_join(spr)
+
 BATCH <- "pre"
 ```
 
@@ -1110,20 +1130,66 @@ expectations |>
 
 ggsave(file.path(outdir_poster, glue::glue("expectation_{BATCH}.pdf")), width = 3.25 , height = 2.5)
 
-cloze_categorized_stats <- cloze |>
-  mutate(category = case_when(
-    response_type %in% c("Harris", "she") ~ "female",
-    response_type %in% c("Trump", "he") ~ "male",
-    response_type %in% c("hedged", "they", "NP") ~ "neutral",
-    .default = "OTHER"
-  )) |>
-  summarize(.by = c(batch, response_type, category), n = n()) |>
-  mutate(.by = "batch", n = n / sum(n))
 
-cloze_categorized_stats |>
+plot_task_expectations_hist <- function(task_expectations, chosen_batch) {
+  task_expectations |> 
+  filter(batch == BATCH) |>
+  select(workerid, starts_with("probability")) |>
+  mutate(expect = factor(case_when(
+    probability_Trump < .49 ~ "Expect female",
+    probability_Trump > .511 ~ "Expect male",
+    .default = "Even"
+  ))) |>
+  ggplot(aes(probability_Trump, fill = expect)) +
+  geom_histogram(bins = 50, center = 0.5) +
+  scale_fill_manual(values = c(
+    "Expect female" = "darkblue", 
+    "Expect male" = "darkred", 
+    "Even" = "gray")) +
+  THEME_POSTER +
+  theme(axis.title.x = NULL, legend.position = "none") +
+  labs(x = "Probability Trump")
+}
+
+expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  plot_task_expectations_hist(BATCH)
+
+ggsave(file.path(outdir_poster, glue::glue("expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
+
+expectations |>
+  filter(batch == BATCH) |>
+  left_join(participants) |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  mutate(
+    task = factor(case_when(
+      str_detect(condition, "cloze") ~ "Cloze",
+      str_detect(condition, "spr") ~ "SPR",
+      str_detect(condition, "maze") ~ "Maze",
+      .default = "Other")),
+    order = if_else(str_starts(condition, "event"), "event-trial", "trial-event"),
+    expect = factor(case_when(
+      probability_Trump < .49 ~ "Expect female",
+      probability_Trump > .511 ~ "Expect male",
+      .default = "Even"))
+  ) |>
+  ggplot(aes(probability_Trump, color = order)) +
+  facet_grid(task~.) +
+  geom_histogram(bins = 50, center = 0.5, position ="stack") +
+  # scale_fill_manual(values = c(
+  #   "Expect female" = "darkblue", 
+  #   "Expect male" = "darkred", 
+  #   "Even" = "gray")) +
+  THEME_POSTER +
+  theme(axis.title.x = NULL, legend.position = "bottom") +
+  labs(x = "Probability Trump")
+
+## CLOZE
+cloze_categorized |>
+  summarize(.by = c(batch, response_type, category), n = n()) |>
+  mutate(.by = "batch", n = n / sum(n)) |>
   filter(batch == BATCH) |>
   filter(response_type != "OTHER") |>
-  ungroup() |>
   ggplot(aes(category, n, fill = response_type)) +
   geom_col() +
   scale_fill_response_types +
@@ -1138,6 +1204,41 @@ cloze_categorized_stats |>
 
 ggsave(file.path(outdir_poster, glue::glue("cloze_{BATCH}.pdf")), width = 3.25, height = 3)
 
+cloze_expectations |>
+  filter(batch == BATCH) |>
+  mutate(
+    expect = factor(case_when(
+      probability_Harris > .51 ~ "Expect female",
+      probability_Harris < .49 ~ "Expect male",
+      .default = "Even"
+    ))
+  ) |>
+  filter(expect != "Even") |>
+  drop_na(expect) |>
+  summarize(.by = c(batch, response_type, category, expect), n = n()) |>
+  mutate(.by = "batch", n = n / sum(n)) |>
+  filter(response_type != "OTHER") |>
+  ggplot(aes(category, n, fill = response_type)) +
+  geom_col() +
+  scale_fill_response_types +
+  guides(fill = guide_legend(nrow = 2)) +
+  facet_wrap(~expect, nrow = 1) +
+  labs(y = "Fraction") +
+  THEME_POSTER +
+  theme(
+    legend.position = "bottom"
+  )
+if (BATCH == "pre") ggsave(
+  file.path(outdir_poster, glue::glue("cloze_expect_{BATCH}.pdf")), width = 4.5, height = 3.5
+)
+
+cloze_expectations |>
+  plot_task_expectations_hist(BATCH)
+
+ggsave(file.path(outdir_poster, glue::glue("cloze_expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
+
+
+## MAZE
 maze |>
   filter(batch == BATCH) |>
   mutate(
@@ -1173,11 +1274,6 @@ maze |>
 
 ggsave(file.path(outdir_poster, glue::glue("maze2_{BATCH}.pdf")), width = 3.25, height = 2.5)
 
-maze_expectations <- expectations |>
-  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
-  select(workerid, starts_with("probability")) |>
-  left_join(maze)
-
 maze_expectations |>
   filter(batch == BATCH) |>
   mutate(
@@ -1202,33 +1298,13 @@ if (BATCH == "pre") ggsave(
   file.path(outdir_poster, glue::glue("maze_expect_{BATCH}.pdf")), width = 3.5, height = 2.5
 )
 
-expectations |>
-  filter(batch == BATCH) |>
-  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
-  select(workerid, starts_with("probability")) |>
-  mutate(expect = factor(case_when(
-    probability_Trump < .49 ~ "Expect female",
-    probability_Trump > .511 ~ "Expect male",
-    .default = "Even"
-  ))) |>
-  ggplot(aes(probability_Trump, fill = expect)) +
-  geom_histogram(bins = 50, center = 0.5) +
-  scale_fill_manual(values = c(
-    "Expect female" = "darkblue", 
-    "Expect male" = "darkred", 
-    "Even" = "gray")) +
-  THEME_POSTER +
-  theme(axis.title.x = NULL, legend.position = "none") +
-  labs(x = "Probability Trump")
 
-ggsave(file.path(outdir_poster, glue::glue("expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
+maze_expectations |>
+  plot_task_expectations_hist(BATCH)
 
-# expectations |> filter(batch == BATCH) |> filter(candidate!="other") |>
-#   ggplot() +
-#   geom_histogram(aes(probability, fill=candidate), position="identity", bins=25,center = 0.5, alpha=0.5) +
-#   scale_fill_manual(values=candidate_colors) +
-#   THEME_POSTER
+ggsave(file.path(outdir_poster, glue::glue("maze_expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
 
+## SPR
 spr |>
   filter(batch == BATCH) |>
   mutate(
@@ -1272,10 +1348,6 @@ spr |>
 
 ggsave(file.path(outdir_poster, glue::glue("spr2_{BATCH}.pdf")), width = 3.25, height =2.5)
 
-spr_expectations <- expectations |>
-  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
-  select(workerid, starts_with("probability")) |>
-  left_join(spr)
 spr_expectations |>
   filter(batch == BATCH) |>
   mutate(
@@ -1300,4 +1372,10 @@ spr_expectations |>
 if (BATCH == "pre") ggsave(
   file.path(outdir_poster, glue::glue("spr_expect_{BATCH}.pdf")), width = 3.5, height = 2.5
 )
+
+spr_expectations |>
+  plot_task_expectations_hist(BATCH)
+
+ggsave(file.path(outdir_poster, glue::glue("spr_expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
+
 ```
