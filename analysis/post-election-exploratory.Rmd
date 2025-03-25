@@ -126,7 +126,532 @@ if (length(participants_both) > 0) {
 }
 ```
 
+# HSP abstract
+
+```{r}
+# Where to save plots
+outdir_abstract <- here(
+  file.path("output", "HSP2025-abstract")
+)
+
+participants |> group_by(condition, batch) |> tally()
+
+participants |> filter(str_detect(condition, "spr")) |> group_by(batch) |> tally()
+
+response_type_colors_ABSTRACT <- c(
+  "Harris" = "darkblue", "she" = "blue",
+  "Trump" = "darkred", "he" = "red",
+  "hedged" = "darkgreen", "they" = "#258d3a",
+  "NP" = "lightgreen",
+  "OTHER" = "gray"
+)
+scale_fill_response_types_ABSTRACT <- scale_fill_manual(
+  values = response_type_colors_ABSTRACT,
+  breaks = names(response_type_colors_ABSTRACT)
+)
+pronoun_colors_ABSTRACT <- c(
+  "she" = "blue", "he" = "red",
+  "they" = "#258d3a"
+)
+scale_color_pronouns_ABSTRACT <- scale_color_manual(
+  values = pronoun_colors_ABSTRACT,
+  breaks = names(pronoun_colors_ABSTRACT)
+)
+
+```
+
+```{r}
+
+expectations |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> ggplot(aes(x=candidate, y=probability, fill=candidate))+
+    stat_summary(fun.data="mean_cl_boot", geom="bar", width=.5)+
+    stat_summary(fun.data="mean_cl_boot", color="black", geom="linerange", size=2)+
+  facet_grid(~batch)+
+  scale_fill_manual(values=candidate_colors)+
+  scale_y_continuous(limits=c(0,1))+
+  theme(legend.position = "none",
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+        strip.background = element_blank())
+
+ggsave(file.path(outdir_abstract, "expectation.pdf"), width = 5 , height = 2 )
+
+```
+
+
+```{r}
+cloze_categorized_stats <- cloze |>
+  mutate(category = case_when(
+    response_type %in% c("Harris", "she") ~ "female",
+    response_type %in% c("Trump", "he") ~ "male",
+    response_type %in% c("hedged", "they", "NP") ~ "neutral",
+    .default = "OTHER"
+  )) |>
+  group_by(batch, response_type, category) |>
+  summarize(n = n()) |>
+  group_by(batch) |>
+  mutate(n = n / sum(n))
+
+cloze_categorized_stats |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> filter(response_type!="OTHER") |> ungroup() |>
+  ggplot(aes(category, n,fill = response_type)) +
+          geom_col( color="black") + 
+   facet_wrap(~batch) +
+  scale_fill_response_types_ABSTRACT +
+  guides(fill=guide_legend(nrow=2))+
+  labs(y="Fraction")+
+    theme(legend.position = "bottom",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(file.path(outdir_abstract, "cloze.pdf"), width = 5, height = 3)
+
+```
+
+
+```{r}
+m1 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>
+  mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |>
+  filter(is_target, is_pron1) |>
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns_ABSTRACT +
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "none",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(file.path(outdir_abstract, "maze.pdf"), width= 5, height =2.5)
+
+m2 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>   mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |>
+  filter(is_target, is_pron2) |>
+  mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |>
+  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender), shape=match, lty=match)) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns_ABSTRACT +
+  guides(shape=guide_legend(), color="none")+
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "bottom",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(file.path(outdir_abstract, "maze2.pdf"), width = 5, height =2.5)
+
+```
+
+
+```{r}
+spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>
+    mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |>
+  filter(is_target, is_pron1) |>
+  ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender))) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns_ABSTRACT +
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "none",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(file.path(outdir_abstract, "spr.pdf"), width= 5, height =2.5)
+
+spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>
+    mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |>
+  filter(is_target, is_pron2) |>
+  mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |>
+  ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender), shape=match, lty=match)) +
+  stat_summary(position=position_dodge2(width=.5)) +
+  scale_color_pronouns_ABSTRACT +
+  guides(shape=guide_legend(), color="none")+
+  labs(
+     y= "log residualized RT",
+    color = "pronoun gender"
+    )+
+  facet_wrap(~batch)+
+  theme(legend.position = "bottom",
+          legend.title=element_blank(),
+        axis.title=element_text(size="14"),
+        axis.text=element_text(size="14"),
+        strip.text = element_text(size="14"),
+        axis.title.x=element_blank(),
+                legend.text=element_text(size="14"),
+
+        strip.background = element_blank())
+
+ggsave(file.path(outdir_abstract, "spr2.pdf"), width = 5, height =2.5)
+```
+
+
+# HSP poster
+
+Need only run the `setup` and `read` chunks before below.
+
+```{r}
+# Where to save plots
+outdir_poster <- here(
+  file.path("output", "HSP2025-poster")
+)
+THEME_POSTER <- theme(
+  axis.title = element_text(size = "14"),
+  axis.text = element_text(size = "14"),
+  strip.text = element_text(size = "14"),
+  legend.text = element_text(size = "10"),
+  legend.title = element_blank(),
+  axis.title.x = element_blank(),
+  strip.background = element_blank()
+)
+participants |>
+  mutate(
+    task = factor(case_when(
+      str_detect(condition, "cloze") ~ "Cloze",
+      str_detect(condition, "spr") ~ "SPR",
+      str_detect(condition, "maze") ~ "Maze",
+      .default = "Other"
+    ))
+  ) |>
+  count(batch, task, condition)
+
+# participants |> filter(str_detect(condition, "spr")) |> group_by(batch) |> tally()
+
+cloze_categorized <- cloze |>
+  mutate(category = case_when(
+    response_type %in% c("Harris", "she") ~ "female",
+    response_type %in% c("Trump", "he") ~ "male",
+    response_type %in% c("hedged", "they", "NP") ~ "neutral",
+    .default = "OTHER"
+  ))
+cloze_expectations <- expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  right_join(cloze_categorized)
+maze_expectations <- expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  right_join(maze)
+spr_expectations <- expectations |>
+  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+  select(workerid, starts_with("probability")) |>
+  right_join(spr)
+```
+
+```{r}
+# Make figures for poster
+for (BATCH in c("pre", "post")) {
+  expectations |>
+    filter(batch == BATCH) |>
+    ggplot(aes(x = candidate, y = probability, fill = candidate)) +
+    stat_summary(fun.data = "mean_cl_boot", geom = "bar", width = .5) +
+    stat_summary(fun.data = "mean_cl_boot", color = "black", geom = "linerange", size = 2) +
+    scale_fill_manual(values = candidate_colors) +
+    scale_y_continuous(limits = c(0, 1)) +
+    THEME_POSTER +
+    theme(legend.position = "none")
+
+  ggsave(file.path(outdir_poster, glue::glue("expectation_{BATCH}.pdf")), width = 3.25, height = 2.5)
+
+
+  plot_task_expectations_hist <- function(task_expectations, chosen_batch) {
+    task_expectations |>
+      filter(batch == BATCH) |>
+      select(workerid, starts_with("probability")) |>
+      mutate(expect = factor(case_when(
+        probability_Trump < .49 ~ "Expect female",
+        probability_Trump > .511 ~ "Expect male",
+        .default = "Even"
+      ))) |>
+      select(probability_Trump, workerid, expect) |>
+      distinct() |>
+      ggplot(aes(probability_Trump, fill = expect)) +
+      geom_histogram(bins = 50, center = 0.5) +
+      scale_fill_manual(values = c(
+        "Expect female" = "darkblue",
+        "Expect male" = "darkred",
+        "Even" = "gray"
+      )) +
+      THEME_POSTER +
+      theme(axis.title.x = NULL, legend.position = "none") +
+      labs(x = "Probability Trump")
+  }
+
+  expectations |>
+    pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+    plot_task_expectations_hist(BATCH)
+
+  ggsave(file.path(outdir_poster, glue::glue("expectation_hist_{BATCH}.pdf")), width = 3.5, height = 2)
+
+  expectations |>
+    filter(batch == BATCH) |>
+    left_join(participants) |>
+    pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
+    mutate(
+      task = factor(case_when(
+        str_detect(condition, "cloze") ~ "Cloze",
+        str_detect(condition, "spr") ~ "SPR",
+        str_detect(condition, "maze") ~ "Maze",
+        .default = "Other"
+      )),
+      order = if_else(str_starts(condition, "event"), "event-trial", "trial-event"),
+      expect = factor(case_when(
+        probability_Trump < .49 ~ "Expect female",
+        probability_Trump > .511 ~ "Expect male",
+        .default = "Even"
+      ))
+    ) |>
+    ggplot(aes(probability_Trump, color = order)) +
+    facet_grid(task ~ .) +
+    geom_histogram(bins = 50, center = 0.5, position = "stack") +
+    # scale_fill_manual(values = c(
+    #   "Expect female" = "darkblue",
+    #   "Expect male" = "darkred",
+    #   "Even" = "gray")) +
+    THEME_POSTER +
+    theme(axis.title.x = NULL, legend.position = "bottom") +
+    labs(x = "Probability Trump")
+
+  ## CLOZE
+  cloze_categorized |>
+    summarize(.by = c(batch, response_type, category), n = n()) |>
+    mutate(.by = "batch", n = n / sum(n)) |>
+    filter(batch == BATCH) |>
+    filter(response_type != "OTHER") |>
+    ggplot(aes(category, n, fill = response_type)) +
+    geom_col() +
+    scale_fill_response_types +
+    guides(fill = guide_legend(nrow = 2)) +
+    labs(y = "Fraction") +
+    THEME_POSTER +
+    theme(
+      legend.position = c(-.2, -.275),
+      legend.justification = "left",
+      plot.margin = unit(c(0.1, 0.1, 3, 0.1), "lines")
+    )
+
+  ggsave(file.path(outdir_poster, glue::glue("cloze_{BATCH}.pdf")), width = 3.25, height = 3)
+
+  cloze_expectations |>
+    filter(batch == BATCH) |>
+    mutate(
+      expect = factor(case_when(
+        probability_Harris > .51 ~ "Expect female",
+        probability_Harris < .49 ~ "Expect male",
+        .default = "Even"
+      ))
+    ) |>
+    filter(expect != "Even") |>
+    drop_na(expect) |>
+    summarize(.by = c(batch, response_type, category, expect), n = n()) |>
+    mutate(.by = "batch", n = n / sum(n)) |>
+    filter(response_type != "OTHER") |>
+    ggplot(aes(category, n, fill = response_type)) +
+    geom_col() +
+    scale_fill_response_types +
+    guides(fill = guide_legend(nrow = 2)) +
+    facet_wrap(~expect, nrow = 1) +
+    labs(y = "Fraction") +
+    THEME_POSTER +
+    theme(
+      legend.position = "bottom"
+    )
+  if (BATCH == "pre") {
+    ggsave(
+      file.path(outdir_poster, glue::glue("cloze_expect_{BATCH}.pdf")),
+      width = 4.5, height = 3.5
+    )
+  }
+
+  cloze_expectations |>
+    plot_task_expectations_hist(BATCH)
+
+  ggsave(file.path(outdir_poster, glue::glue("cloze_expectation_hist_{BATCH}.pdf")), width = 3.5, height = 2)
+
+
+  ## MAZE
+  maze |>
+    filter(batch == BATCH) |>
+    mutate(
+      pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
+    ) |>
+    filter(is_target, is_pron1) |>
+    ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+    stat_summary(position = position_dodge2(width = .5)) +
+    scale_color_pronouns +
+    labs(y = "log residualized RT", color = "pronoun gender") +
+    THEME_POSTER +
+    theme(legend.position = "none")
+
+  ggsave(file.path(outdir_poster, glue::glue("maze_{BATCH}.pdf")), width = 3.25, height = 2.5)
+
+  maze |>
+    filter(batch == BATCH) |>
+    mutate(
+      pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
+    ) |>
+    filter(is_target, is_pron2) |>
+    mutate(match = ifelse(type %in% c("she-she", "he-he", "they-they"), "match", "mismatch")) |>
+    ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender), shape = match, lty = match)) +
+    stat_summary(position = position_dodge2(width = .5)) +
+    scale_color_pronouns +
+    guides(shape = guide_legend(), color = "none") +
+    labs(y = "log residualized RT", color = "pronoun gender") +
+    THEME_POSTER +
+    theme(
+      legend.position = "bottom",
+      legend.margin = margin(0.1, 0.1, 0.1, 0.1, "lines")
+    )
+
+  ggsave(file.path(outdir_poster, glue::glue("maze2_{BATCH}.pdf")), width = 3.25, height = 2.5)
+
+  maze_expectations |>
+    filter(batch == BATCH) |>
+    mutate(
+      pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they")),
+      expect = factor(case_when(
+        probability_Harris > .51 ~ "Expect female",
+        probability_Harris < .49 ~ "Expect male",
+        .default = "Even"
+      ))
+    ) |>
+    filter(expect != "Even") |>
+    filter(is_target, is_pron1) |>
+    drop_na(expect) |>
+    ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+    stat_summary(position = position_dodge2(width = .5)) +
+    scale_color_pronouns +
+    labs(y = "log residualized RT", color = "pronoun gender") +
+    facet_wrap(~expect, nrow = 1) +
+    THEME_POSTER +
+    theme(legend.position = "none")
+  if (BATCH == "pre") {
+    ggsave(
+      file.path(outdir_poster, glue::glue("maze_expect_{BATCH}.pdf")),
+      width = 3.5, height = 2.5
+    )
+  }
+
+
+  maze_expectations |>
+    plot_task_expectations_hist(BATCH)
+
+  ggsave(file.path(outdir_poster, glue::glue("maze_expectation_hist_{BATCH}.pdf")), width = 3.5, height = 2)
+
+  ## SPR
+  spr |>
+    filter(batch == BATCH) |>
+    mutate(
+      pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
+    ) |>
+    filter(is_target, is_pron1) |>
+    ggplot(aes(
+      pronoun_gender, log(rt_gmean),
+      color = factor(pronoun_gender)
+    )) +
+    stat_summary(position = position_dodge2(width = .5)) +
+    scale_color_pronouns +
+    labs(y = "log residualized RT", color = "pronoun gender") +
+    THEME_POSTER +
+    theme(legend.position = "none")
+
+  ggsave(file.path(outdir_poster, glue::glue("spr_{BATCH}.pdf")), width = 3.25, height = 2.5)
+
+  spr |>
+    filter(batch == BATCH) |>
+    mutate(
+      pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
+    ) |>
+    filter(is_target, is_pron2) |>
+    mutate(match = ifelse(
+      type %in% c("she-she", "he-he", "they-they"), "match", "mismatch"
+    )) |>
+    ggplot(aes(
+      pronoun_gender, log(rt_gmean),
+      color = factor(pronoun_gender), shape = match, lty = match
+    )) +
+    stat_summary(position = position_dodge2(width = .5)) +
+    scale_color_pronouns +
+    guides(shape = guide_legend(), color = "none") +
+    labs(y = "log residualized RT", color = "pronoun gender") +
+    THEME_POSTER +
+    theme(
+      legend.position = "bottom",
+      legend.margin = margin(0.1, 0.1, 0.1, 0.1, "lines")
+    )
+
+  ggsave(file.path(outdir_poster, glue::glue("spr2_{BATCH}.pdf")), width = 3.25, height = 2.5)
+
+  spr_expectations |>
+    filter(batch == BATCH) |>
+    mutate(
+      pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they")),
+      expect = factor(case_when(
+        probability_Harris > .51 ~ "Expect Harris",
+        probability_Harris <= .49 ~ "Expect Trump",
+        .default = "Even"
+      ))
+    ) |>
+    filter(expect != "Even") |>
+    drop_na(expect) |>
+    filter(is_target, is_pron1) |>
+    ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
+    stat_summary(position = position_dodge2(width = .5)) +
+    scale_color_pronouns +
+    labs(y = "log residualized RT", color = "pronoun gender") +
+    facet_wrap(~expect, nrow = 1) +
+    THEME_POSTER +
+    theme(legend.position = "none")
+
+  if (BATCH == "pre") {
+    ggsave(
+      file.path(outdir_poster, glue::glue("spr_expect_{BATCH}.pdf")),
+      width = 3.5, height = 2.5
+    )
+  }
+
+  spr_expectations |>
+    plot_task_expectations_hist(BATCH)
+
+  ggsave(file.path(outdir_poster, glue::glue("spr_expectation_hist_{BATCH}.pdf")), width = 3.5, height = 2)
+}
+```
+
+
 # Exploratory Data analysis
+
+Other exploratory analysis below.
 
 ## Event expectation
 
@@ -141,8 +666,8 @@ expectations_test <- drop_na(expectations, probability) |>
     p_value = t.test(p, mu = 0.5)$p.value,
     ci_lower = t.test(p, mu = 0.5)$conf.int[1],
     ci_upper = t.test(p, mu = 0.5)$conf.int[2]
-  ) 
-expectations_test |> 
+  )
+expectations_test |>
   ggplot(aes(x = mean_prob, y = batch)) +
   geom_vline(xintercept = 0.5, linetype = "dashed", color = "gray50") +
   geom_pointrange(aes(xmin = ci_lower, xmax = ci_upper)) +
@@ -176,7 +701,7 @@ Within each batch {pre-election, post-election}, is there a significant differen
 # Fit model with interaction
 lm_maze <- lm(
   log(rt) ~ pronoun_gender * batch,
-  data = maze |> filter(is_target, is_pron1) |> 
+  data = maze |> filter(is_target, is_pron1) |>
     mutate(batch = fct_rev(batch))
 )
 
@@ -238,7 +763,7 @@ And looking at the second pronoun:
 # Fit model with interaction
 lm_maze2 <- lm(
   log(rt) ~ pronoun_gender * batch * match,
-  data = maze |> filter(is_target, is_pron2) |> 
+  data = maze |> filter(is_target, is_pron2) |>
     mutate(batch = fct_rev(batch))
 )
 
@@ -271,7 +796,7 @@ Within each batch {pre-election, post-election}, is there a significant differen
 # Fit model with interaction
 lm_spr <- lm(
   log(rt_gmean) ~ pronoun_gender * batch,
-  data = spr |> filter(is_target, is_pron1) |> 
+  data = spr |> filter(is_target, is_pron1) |>
     mutate(batch = fct_rev(batch))
 )
 
@@ -331,7 +856,7 @@ And looking at the second pronoun:
 # Fit model with interaction
 lm_spr2 <- lm(
   log(rt_gmean) ~ pronoun_gender * batch * match,
-  data = spr |> filter(is_target, is_pron2) |> 
+  data = spr |> filter(is_target, is_pron2) |>
     mutate(batch = fct_rev(batch))
 )
 
@@ -429,7 +954,7 @@ cloze_categorized |>
   geom_bar() + facet_wrap(~batch) +
   geom_text(stat = "count", aes(label = ..count..), color = "white", position = position_stack(vjust = 0.5)) +
   scale_fill_response_types +
-  labs(title = "Type of cloze responses") 
+  labs(title = "Type of cloze responses")
 ```
 
 ```{r}
@@ -449,7 +974,7 @@ cloze_categorized |>
   geom_text(stat = "count", aes(label = ..count..), color = "white", position = position_stack(vjust = 0.5)) +
   facet_wrap(condition~batch, scales = "free_y") +
   scale_fill_response_types +
-  labs(title = "Type of cloze responses, faceted by order") 
+  labs(title = "Type of cloze responses, faceted by order")
 ```
 In the event-cloze order there seems to be a somewhat larger bias toward producing male pronouns or male referents/Trump.
 
@@ -882,500 +1407,4 @@ spr |>
 
 
 
-# HSP abstract
 
-```{r}
-# Where to save plots
-outdir_abstract <- here(
-  file.path("output", "HSP2025-abstract")
-)
-
-participants |> group_by(condition, batch) |> tally()
-
-participants |> filter(str_detect(condition, "spr")) |> group_by(batch) |> tally()
-
-response_type_colors_ABSTRACT <- c(
-  "Harris" = "darkblue", "she" = "blue",
-  "Trump" = "darkred", "he" = "red",
-  "hedged" = "darkgreen", "they" = "#258d3a",
-  "NP" = "lightgreen",
-  "OTHER" = "gray"
-)
-scale_fill_response_types_ABSTRACT <- scale_fill_manual(
-  values = response_type_colors_ABSTRACT,
-  breaks = names(response_type_colors_ABSTRACT)
-)
-pronoun_colors_ABSTRACT <- c(
-  "she" = "blue", "he" = "red",
-  "they" = "#258d3a"
-)
-scale_color_pronouns_ABSTRACT <- scale_color_manual(
-  values = pronoun_colors_ABSTRACT,
-  breaks = names(pronoun_colors_ABSTRACT)
-)
-
-```
-
-```{r}
-
-expectations |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> ggplot(aes(x=candidate, y=probability, fill=candidate))+
-    stat_summary(fun.data="mean_cl_boot", geom="bar", width=.5)+
-    stat_summary(fun.data="mean_cl_boot", color="black", geom="linerange", size=2)+
-  facet_grid(~batch)+
-  scale_fill_manual(values=candidate_colors)+
-  scale_y_continuous(limits=c(0,1))+
-  theme(legend.position = "none",
-        axis.title=element_text(size="14"),
-        axis.text=element_text(size="14"),
-        strip.text = element_text(size="14"),
-        axis.title.x=element_blank(),
-        strip.background = element_blank())
-
-ggsave(file.path(outdir_abstract, "expectation.pdf"), width = 5 , height = 2 )
-
-```
-
-
-```{r}
-cloze_categorized_stats <- cloze |>
-  mutate(category = case_when(
-    response_type %in% c("Harris", "she") ~ "female",
-    response_type %in% c("Trump", "he") ~ "male",
-    response_type %in% c("hedged", "they", "NP") ~ "neutral",
-    .default = "OTHER"
-  )) |>
-  group_by(batch, response_type, category) |>
-  summarize(n = n()) |>
-  group_by(batch) |>
-  mutate(n = n / sum(n))
-
-cloze_categorized_stats |> mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> filter(response_type!="OTHER") |> ungroup() |> 
-  ggplot(aes(category, n,fill = response_type)) +
-          geom_col( color="black") + 
-   facet_wrap(~batch) +
-  scale_fill_response_types_ABSTRACT +
-  guides(fill=guide_legend(nrow=2))+
-  labs(y="Fraction")+
-    theme(legend.position = "bottom",
-          legend.title=element_blank(),
-        axis.title=element_text(size="14"),
-        axis.text=element_text(size="14"),
-        strip.text = element_text(size="14"),
-        axis.title.x=element_blank(),
-                legend.text=element_text(size="14"),
-
-        strip.background = element_blank())
-
-ggsave(file.path(outdir_abstract, "cloze.pdf"), width = 5, height = 3)
-
-```
-
-
-```{r}
-m1 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>
-  mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
-  filter(is_target, is_pron1) |> 
-  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
-  stat_summary(position=position_dodge2(width=.5)) +
-  scale_color_pronouns_ABSTRACT +
-  labs(
-     y= "log residualized RT",
-    color = "pronoun gender"
-    )+
-  facet_wrap(~batch)+
-  theme(legend.position = "none",
-          legend.title=element_blank(),
-        axis.title=element_text(size="14"),
-        axis.text=element_text(size="14"),
-        strip.text = element_text(size="14"),
-        axis.title.x=element_blank(),
-                legend.text=element_text(size="14"),
-
-        strip.background = element_blank())
-
-ggsave(file.path(outdir_abstract, "maze.pdf"), width= 5, height =2.5)
-
-m2 <- maze |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |>   mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
-  filter(is_target, is_pron2) |> 
-  mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |> 
-  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender), shape=match, lty=match)) +
-  stat_summary(position=position_dodge2(width=.5)) +
-  scale_color_pronouns_ABSTRACT +
-  guides(shape=guide_legend(), color="none")+
-  labs(
-     y= "log residualized RT",
-    color = "pronoun gender"
-    )+
-  facet_wrap(~batch)+
-  theme(legend.position = "bottom",
-          legend.title=element_blank(),
-        axis.title=element_text(size="14"),
-        axis.text=element_text(size="14"),
-        strip.text = element_text(size="14"),
-        axis.title.x=element_blank(),
-                legend.text=element_text(size="14"),
-
-        strip.background = element_blank())
-
-ggsave(file.path(outdir_abstract, "maze2.pdf"), width = 5, height =2.5)
-
-```
-
-
-```{r}
-spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> 
-    mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
-  filter(is_target, is_pron1) |> 
-  ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender))) +
-  stat_summary(position=position_dodge2(width=.5)) +
-  scale_color_pronouns_ABSTRACT +
-  labs(
-     y= "log residualized RT",
-    color = "pronoun gender"
-    )+
-  facet_wrap(~batch)+
-  theme(legend.position = "none",
-          legend.title=element_blank(),
-        axis.title=element_text(size="14"),
-        axis.text=element_text(size="14"),
-        strip.text = element_text(size="14"),
-        axis.title.x=element_blank(),
-                legend.text=element_text(size="14"),
-
-        strip.background = element_blank())
-
-ggsave(file.path(outdir_abstract, "spr.pdf"), width= 5, height =2.5)
-
-spr |>mutate(batch=factor(batch, levels=c("pre", "post"), labels=c("Pre", "Post"))) |> 
-    mutate(pronoun_gender=factor(pronoun_gender, levels=c("she", "he", "they"))) |> 
-  filter(is_target, is_pron2) |> 
-  mutate(match=ifelse(type %in% c('she-she', 'he-he', 'they-they'), "match", "mismatch")) |> 
-  ggplot(aes(pronoun_gender, log(rt_gmean), color = factor(pronoun_gender), shape=match, lty=match)) +
-  stat_summary(position=position_dodge2(width=.5)) +
-  scale_color_pronouns_ABSTRACT +
-  guides(shape=guide_legend(), color="none")+
-  labs(
-     y= "log residualized RT",
-    color = "pronoun gender"
-    )+
-  facet_wrap(~batch)+
-  theme(legend.position = "bottom",
-          legend.title=element_blank(),
-        axis.title=element_text(size="14"),
-        axis.text=element_text(size="14"),
-        strip.text = element_text(size="14"),
-        axis.title.x=element_blank(),
-                legend.text=element_text(size="14"),
-
-        strip.background = element_blank())
-
-ggsave(file.path(outdir_abstract, "spr2.pdf"), width = 5, height =2.5)
-```
-
-
-# HSP poster
-
-Need only run the `setup` and `read` chunks before below.
-
-```{r}
-# Where to save plots
-outdir_poster <- here(
-  file.path("output", "HSP2025-poster")
-)
-THEME_POSTER <- theme(
-  axis.title = element_text(size = "14"),
-  axis.text = element_text(size = "14"),
-  strip.text = element_text(size = "14"),
-  legend.text = element_text(size = "10"),
-  legend.title = element_blank(),
-  axis.title.x = element_blank(),
-  strip.background = element_blank()
-)
-# participants |> group_by(condition, batch) |> tally()
-# participants |> filter(str_detect(condition, "spr")) |> group_by(batch) |> tally()
-
-cloze_categorized <- cloze |>
-  mutate(category = case_when(
-    response_type %in% c("Harris", "she") ~ "female",
-    response_type %in% c("Trump", "he") ~ "male",
-    response_type %in% c("hedged", "they", "NP") ~ "neutral",
-    .default = "OTHER"
-  )) 
-cloze_expectations <- expectations |>
-  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
-  select(workerid, starts_with("probability")) |>
-  right_join(cloze_categorized)
-maze_expectations <- expectations |>
-  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
-  select(workerid, starts_with("probability")) |>
-  right_join(maze)
-spr_expectations <- expectations |>
-  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
-  select(workerid, starts_with("probability")) |>
-  right_join(spr)
-
-BATCH <- "pre"
-```
-
-```{r}
-expectations |>
-  filter(batch == BATCH) |>
-  ggplot(aes(x = candidate, y = probability, fill = candidate)) +
-  stat_summary(fun.data = "mean_cl_boot", geom = "bar", width = .5) +
-  stat_summary(fun.data = "mean_cl_boot", color = "black", geom = "linerange", size = 2) +
-  scale_fill_manual(values = candidate_colors) +
-  scale_y_continuous(limits = c(0, 1)) +
-  THEME_POSTER +
-  theme(legend.position = "none")
-
-ggsave(file.path(outdir_poster, glue::glue("expectation_{BATCH}.pdf")), width = 3.25 , height = 2.5)
-
-
-plot_task_expectations_hist <- function(task_expectations, chosen_batch) {
-  task_expectations |> 
-  filter(batch == BATCH) |>
-  select(workerid, starts_with("probability")) |>
-  mutate(expect = factor(case_when(
-    probability_Trump < .49 ~ "Expect female",
-    probability_Trump > .511 ~ "Expect male",
-    .default = "Even"
-  ))) |>
-  ggplot(aes(probability_Trump, fill = expect)) +
-  geom_histogram(bins = 50, center = 0.5) +
-  scale_fill_manual(values = c(
-    "Expect female" = "darkblue", 
-    "Expect male" = "darkred", 
-    "Even" = "gray")) +
-  THEME_POSTER +
-  theme(axis.title.x = NULL, legend.position = "none") +
-  labs(x = "Probability Trump")
-}
-
-expectations |>
-  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
-  plot_task_expectations_hist(BATCH)
-
-ggsave(file.path(outdir_poster, glue::glue("expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
-
-expectations |>
-  filter(batch == BATCH) |>
-  left_join(participants) |>
-  pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
-  mutate(
-    task = factor(case_when(
-      str_detect(condition, "cloze") ~ "Cloze",
-      str_detect(condition, "spr") ~ "SPR",
-      str_detect(condition, "maze") ~ "Maze",
-      .default = "Other")),
-    order = if_else(str_starts(condition, "event"), "event-trial", "trial-event"),
-    expect = factor(case_when(
-      probability_Trump < .49 ~ "Expect female",
-      probability_Trump > .511 ~ "Expect male",
-      .default = "Even"))
-  ) |>
-  ggplot(aes(probability_Trump, color = order)) +
-  facet_grid(task~.) +
-  geom_histogram(bins = 50, center = 0.5, position ="stack") +
-  # scale_fill_manual(values = c(
-  #   "Expect female" = "darkblue", 
-  #   "Expect male" = "darkred", 
-  #   "Even" = "gray")) +
-  THEME_POSTER +
-  theme(axis.title.x = NULL, legend.position = "bottom") +
-  labs(x = "Probability Trump")
-
-## CLOZE
-cloze_categorized |>
-  summarize(.by = c(batch, response_type, category), n = n()) |>
-  mutate(.by = "batch", n = n / sum(n)) |>
-  filter(batch == BATCH) |>
-  filter(response_type != "OTHER") |>
-  ggplot(aes(category, n, fill = response_type)) +
-  geom_col() +
-  scale_fill_response_types +
-  guides(fill = guide_legend(nrow = 2)) +
-  labs(y = "Fraction") +
-  THEME_POSTER +
-  theme(
-    legend.position = c(-.2,-.275),
-    legend.justification='left',
-    plot.margin = unit(c(0.1,0.1,3,0.1), 'lines')
-  )
-
-ggsave(file.path(outdir_poster, glue::glue("cloze_{BATCH}.pdf")), width = 3.25, height = 3)
-
-cloze_expectations |>
-  filter(batch == BATCH) |>
-  mutate(
-    expect = factor(case_when(
-      probability_Harris > .51 ~ "Expect female",
-      probability_Harris < .49 ~ "Expect male",
-      .default = "Even"
-    ))
-  ) |>
-  filter(expect != "Even") |>
-  drop_na(expect) |>
-  summarize(.by = c(batch, response_type, category, expect), n = n()) |>
-  mutate(.by = "batch", n = n / sum(n)) |>
-  filter(response_type != "OTHER") |>
-  ggplot(aes(category, n, fill = response_type)) +
-  geom_col() +
-  scale_fill_response_types +
-  guides(fill = guide_legend(nrow = 2)) +
-  facet_wrap(~expect, nrow = 1) +
-  labs(y = "Fraction") +
-  THEME_POSTER +
-  theme(
-    legend.position = "bottom"
-  )
-if (BATCH == "pre") ggsave(
-  file.path(outdir_poster, glue::glue("cloze_expect_{BATCH}.pdf")), width = 4.5, height = 3.5
-)
-
-cloze_expectations |>
-  plot_task_expectations_hist(BATCH)
-
-ggsave(file.path(outdir_poster, glue::glue("cloze_expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
-
-
-## MAZE
-maze |>
-  filter(batch == BATCH) |>
-  mutate(
-    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
-  ) |>
-  filter(is_target, is_pron1) |>
-  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
-  stat_summary(position = position_dodge2(width = .5)) +
-  scale_color_pronouns +
-  labs(y = "log residualized RT", color = "pronoun gender") +
-  THEME_POSTER +
-  theme(legend.position = "none")
-
-ggsave(file.path(outdir_poster, glue::glue("maze_{BATCH}.pdf")), width = 3.25, height = 2.5)
-
-maze |>
-  filter(batch == BATCH) |>
-  mutate(
-    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
-  ) |>
-  filter(is_target, is_pron2) |>
-  mutate(match = ifelse(type %in% c("she-she", "he-he", "they-they"), "match", "mismatch")) |>
-  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender), shape = match, lty = match)) +
-  stat_summary(position = position_dodge2(width = .5)) +
-  scale_color_pronouns +
-  guides(shape = guide_legend(), color = "none") +
-  labs(y = "log residualized RT", color = "pronoun gender") +
-  THEME_POSTER +
-  theme(
-    legend.position = "bottom",
-    legend.margin = margin(0.1, 0.1, 0.1, 0.1, "lines")
-  )
-
-ggsave(file.path(outdir_poster, glue::glue("maze2_{BATCH}.pdf")), width = 3.25, height = 2.5)
-
-maze_expectations |>
-  filter(batch == BATCH) |>
-  mutate(
-    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they")),
-    expect = factor(case_when(
-      probability_Harris > .51 ~ "Expect female",
-      probability_Harris < .49 ~ "Expect male",
-      .default = "Even"
-    ))
-  ) |>
-  filter(expect != "Even") |>
-  filter(is_target, is_pron1) |>
-  drop_na(expect) |>
-  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
-  stat_summary(position = position_dodge2(width = .5)) +
-  scale_color_pronouns +
-  labs(y = "log residualized RT", color = "pronoun gender") +
-  facet_wrap(~expect, nrow = 1) +
-  THEME_POSTER +
-  theme(legend.position = "none")
-if (BATCH == "pre") ggsave(
-  file.path(outdir_poster, glue::glue("maze_expect_{BATCH}.pdf")), width = 3.5, height = 2.5
-)
-
-
-maze_expectations |>
-  plot_task_expectations_hist(BATCH)
-
-ggsave(file.path(outdir_poster, glue::glue("maze_expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
-
-## SPR
-spr |>
-  filter(batch == BATCH) |>
-  mutate(
-    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
-  ) |>
-  filter(is_target, is_pron1) |>
-  ggplot(aes(
-    pronoun_gender, log(rt_gmean),
-    color = factor(pronoun_gender)
-  )) +
-  stat_summary(position = position_dodge2(width = .5)) +
-  scale_color_pronouns +
-  labs(y = "log residualized RT", color = "pronoun gender") +
-  THEME_POSTER +
-  theme(legend.position = "none")
-
-ggsave(file.path(outdir_poster, glue::glue("spr_{BATCH}.pdf")), width = 3.25, height = 2.5)
-
-spr |>
-  filter(batch == BATCH) |>
-  mutate(
-    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
-  ) |>
-  filter(is_target, is_pron2) |>
-  mutate(match = ifelse(
-    type %in% c("she-she", "he-he", "they-they"), "match", "mismatch"
-  )) |>
-  ggplot(aes(
-    pronoun_gender, log(rt_gmean),
-    color = factor(pronoun_gender), shape = match, lty = match
-  )) +
-  stat_summary(position = position_dodge2(width = .5)) +
-  scale_color_pronouns +
-  guides(shape = guide_legend(), color = "none") +
-  labs(y = "log residualized RT", color = "pronoun gender") +
-  THEME_POSTER +
-  theme(
-    legend.position = "bottom",
-    legend.margin = margin(0.1, 0.1, 0.1, 0.1, "lines")
-  )
-
-ggsave(file.path(outdir_poster, glue::glue("spr2_{BATCH}.pdf")), width = 3.25, height =2.5)
-
-spr_expectations |>
-  filter(batch == BATCH) |>
-  mutate(
-    pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they")),
-    expect = factor(case_when(
-      probability_Harris > .51 ~ "Expect Harris",
-      probability_Harris <= .49 ~ "Expect Trump",
-      .default = "Even"
-    ))
-  ) |>
-  filter(expect != "Even") |>
-  drop_na(expect) |>
-  filter(is_target, is_pron1) |>
-  ggplot(aes(pronoun_gender, log(rt), color = factor(pronoun_gender))) +
-  stat_summary(position = position_dodge2(width = .5)) +
-  scale_color_pronouns +
-  labs(y = "log residualized RT", color = "pronoun gender") +
-  facet_wrap(~expect, nrow = 1) +
-  THEME_POSTER +
-  theme(legend.position = "none")
-
-if (BATCH == "pre") ggsave(
-  file.path(outdir_poster, glue::glue("spr_expect_{BATCH}.pdf")), width = 3.5, height = 2.5
-)
-
-spr_expectations |>
-  plot_task_expectations_hist(BATCH)
-
-ggsave(file.path(outdir_poster, glue::glue("spr_expectation_hist_{BATCH}.pdf")), width = 3.5 , height = 2)
-
-```
