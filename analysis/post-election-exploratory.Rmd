@@ -370,9 +370,19 @@ spr_expectations <- expectations |>
 ```
 
 ```{r}
+pagebreak <- function() {
+  if (knitr::is_latex_output()) {
+    return("\\newpage")
+  } else {
+    return('<div style="page-break-before: always;" />')
+  }
+}
+
 # Make figures for poster
 for (BATCH in c("pre", "post")) {
-  expectations |>
+  cat(paste0("------------- Batch: ", BATCH, "-election\n"))
+
+  p_expectation <- expectations |>
     filter(batch == BATCH) |>
     ggplot(aes(x = candidate, y = probability, fill = candidate)) +
     stat_summary(fun.data = "mean_cl_boot", geom = "bar", width = .5) +
@@ -381,8 +391,10 @@ for (BATCH in c("pre", "post")) {
     scale_y_continuous(limits = c(0, 1)) +
     THEME_POSTER +
     theme(legend.position = "none")
-
   ggsave(file.path(outdir_poster, glue::glue("expectation_{BATCH}.pdf")), width = 3.25, height = 2.5)
+  pagebreak()
+  print(p_expectation)
+  cat("Event expectations\n")
 
 
   plot_task_expectations_hist <- function(task_expectations, chosen_batch) {
@@ -407,14 +419,15 @@ for (BATCH in c("pre", "post")) {
       theme(axis.title.x = NULL, legend.position = "none") +
       labs(x = "Probability Trump")
   }
-
-  expectations |>
+  p_expectation_hist <- expectations |>
     pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
     plot_task_expectations_hist(BATCH)
-
   ggsave(file.path(outdir_poster, glue::glue("expectation_hist_{BATCH}.pdf")), width = 3.5, height = 2)
+  pagebreak()
+  print(p_expectation_hist)
+  cat("Event expectations histogram\n")
 
-  expectations |>
+  p_expectation_hist_bytask <- expectations |>
     filter(batch == BATCH) |>
     left_join(participants) |>
     pivot_wider(names_from = candidate, values_from = c(probability, response)) |>
@@ -442,9 +455,12 @@ for (BATCH in c("pre", "post")) {
     THEME_POSTER +
     theme(axis.title.x = NULL, legend.position = "bottom") +
     labs(x = "Probability Trump")
+  pagebreak()
+  print(p_expectation_hist_bytask)
+  cat("Event expectations histogram by task\n")
 
   ## CLOZE
-  cloze_categorized |>
+  p_cloze <- cloze_categorized |>
     summarize(.by = c(batch, response_type, category), n = n()) |>
     mutate(.by = "batch", n = n / sum(n)) |>
     filter(batch == BATCH) |>
@@ -460,10 +476,12 @@ for (BATCH in c("pre", "post")) {
       legend.justification = "left",
       plot.margin = unit(c(0.1, 0.1, 3, 0.1), "lines")
     )
-
   ggsave(file.path(outdir_poster, glue::glue("cloze_{BATCH}.pdf")), width = 3.25, height = 3)
+  pagebreak()
+  print(p_cloze)
+  cat("Cloze\n")
 
-  cloze_expectations |>
+  p_cloze_expect <- cloze_expectations |>
     filter(batch == BATCH) |>
     mutate(
       expect = factor(case_when(
@@ -492,16 +510,20 @@ for (BATCH in c("pre", "post")) {
       file.path(outdir_poster, glue::glue("cloze_expect_{BATCH}.pdf")),
       width = 4.5, height = 3.5
     )
+    cat("Cloze by expectations\n")
+    pagebreak()
+    print(p_cloze_expect)
   }
 
-  cloze_expectations |>
+  p_cloze_expectation_hist <- cloze_expectations |>
     plot_task_expectations_hist(BATCH)
-
   ggsave(file.path(outdir_poster, glue::glue("cloze_expectation_hist_{BATCH}.pdf")), width = 3.5, height = 2)
-
+  pagebreak()
+  print(p_cloze_expectation_hist)
+  cat("Cloze task expectations histogram\n")
 
   ## MAZE
-  maze |>
+  p_maze <- maze |>
     filter(batch == BATCH) |>
     mutate(
       pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
@@ -513,10 +535,12 @@ for (BATCH in c("pre", "post")) {
     labs(y = "log residualized RT", color = "pronoun gender") +
     THEME_POSTER +
     theme(legend.position = "none")
-
   ggsave(file.path(outdir_poster, glue::glue("maze_{BATCH}.pdf")), width = 3.25, height = 2.5)
+  pagebreak()
+  print(p_maze)
+  cat("Maze\n")
 
-  maze |>
+  p_maze2 <- maze |>
     filter(batch == BATCH) |>
     mutate(
       pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
@@ -533,10 +557,12 @@ for (BATCH in c("pre", "post")) {
       legend.position = "bottom",
       legend.margin = margin(0.1, 0.1, 0.1, 0.1, "lines")
     )
-
   ggsave(file.path(outdir_poster, glue::glue("maze2_{BATCH}.pdf")), width = 3.25, height = 2.5)
+  pagebreak()
+  print(p_maze2)
+  cat("Maze second pronoun\n")
 
-  maze_expectations |>
+  p_maze_expect <- maze_expectations |>
     filter(batch == BATCH) |>
     mutate(
       pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they")),
@@ -561,16 +587,20 @@ for (BATCH in c("pre", "post")) {
       file.path(outdir_poster, glue::glue("maze_expect_{BATCH}.pdf")),
       width = 3.5, height = 2.5
     )
+    pagebreak()
+    print(p_maze_expect)
+    cat("Maze by expectation\n")
   }
 
-
-  maze_expectations |>
+  p_maze_expectation_hist <- maze_expectations |>
     plot_task_expectations_hist(BATCH)
-
   ggsave(file.path(outdir_poster, glue::glue("maze_expectation_hist_{BATCH}.pdf")), width = 3.5, height = 2)
+  pagebreak()
+  print(p_maze_expectation_hist)
+  cat("Maze task expectations histogram\n")
 
   ## SPR
-  spr |>
+  p_spr <- spr |>
     filter(batch == BATCH) |>
     mutate(
       pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
@@ -585,10 +615,12 @@ for (BATCH in c("pre", "post")) {
     labs(y = "log residualized RT", color = "pronoun gender") +
     THEME_POSTER +
     theme(legend.position = "none")
-
   ggsave(file.path(outdir_poster, glue::glue("spr_{BATCH}.pdf")), width = 3.25, height = 2.5)
+  pagebreak()
+  print(p_spr)
+  cat("SPR\n")
 
-  spr |>
+  p_spr2 <- spr |>
     filter(batch == BATCH) |>
     mutate(
       pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they"))
@@ -610,10 +642,12 @@ for (BATCH in c("pre", "post")) {
       legend.position = "bottom",
       legend.margin = margin(0.1, 0.1, 0.1, 0.1, "lines")
     )
-
   ggsave(file.path(outdir_poster, glue::glue("spr2_{BATCH}.pdf")), width = 3.25, height = 2.5)
+  pagebreak()
+  print(p_spr2)
+  cat("SPR second pronoun\n")
 
-  spr_expectations |>
+  p_spr_expect <- spr_expectations |>
     filter(batch == BATCH) |>
     mutate(
       pronoun_gender = factor(pronoun_gender, levels = c("she", "he", "they")),
@@ -639,12 +673,17 @@ for (BATCH in c("pre", "post")) {
       file.path(outdir_poster, glue::glue("spr_expect_{BATCH}.pdf")),
       width = 3.5, height = 2.5
     )
+    pagebreak()
+    print(p_spr_expect)
+    cat("SPR by expectations\n")
   }
 
-  spr_expectations |>
+  p_spr_expectation_hist <- spr_expectations |>
     plot_task_expectations_hist(BATCH)
-
   ggsave(file.path(outdir_poster, glue::glue("spr_expectation_hist_{BATCH}.pdf")), width = 3.5, height = 2)
+  pagebreak()
+  print(p_spr_expectation_hist)
+  cat("SPR expectations histogram\n")
 }
 ```
 
